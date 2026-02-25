@@ -24,7 +24,7 @@ public partial class MainWindow : Window
     }
 
     // ─── ドラッグ移動 ─────────────────────────────────────────────
-    private void DragStrip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void OuterBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed)
             DragMove();
