@@ -10,7 +10,7 @@ namespace TaskAzure.Services;
 /// </summary>
 public class CredentialService
 {
-    public const string CredentialTarget = "TaskAzure_ADO_PAT";
+    public const string CredentialTarget = "ADO_PAT";
 
     public string? GetPat(string envVarName = "ADO_PAT")
     {
@@ -18,7 +18,7 @@ public class CredentialService
         if (!string.IsNullOrWhiteSpace(env))
             return env;
 
-        return ReadFromCredentialManager(CredentialTarget);
+        return ReadFromCredentialManager(envVarName);
     }
 
     public bool SaveToCredentialManager(string pat)
