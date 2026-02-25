@@ -11,14 +11,8 @@
        MinHeight="30"
        SizeToContent="Height"
        MaxHeight="600"
-       ResizeMode="NoResize">
-
-    <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="0"
-                      GlassFrameThickness="0"
-                      ResizeBorderThickness="0"
-                      UseAeroCaptionButtons="False"/>
-    </WindowChrome.WindowChrome>
+       ResizeMode="NoResize"
+       PreviewMouseLeftButtonDown="Window_PreviewMouseLeftButtonDown">
 
     <Window.Resources>
         <Style TargetType="ScrollBar">
@@ -27,8 +21,7 @@
         </Style>
     </Window.Resources>
 
-    <Border x:Name="OuterBorder" Margin="5" CornerRadius="7"
-            MouseLeftButtonDown="OuterBorder_MouseLeftButtonDown">
+    <Border x:Name="OuterBorder" Margin="5" CornerRadius="7">
         <Border.Style>
             <Style TargetType="Border">
                 <Setter Property="Background" Value="#E6141420"/>
@@ -96,33 +89,31 @@
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="42"/>
-                                        <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="36"/>
+                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0"
-                                               Text="{Binding IdDisplay}"
+                                               Text="{Binding TypeShort}"
+                                               Foreground="{Binding TypeColor}"
+                                               FontFamily="Consolas" FontSize="9" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,6,0"/>
+
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Id}"
                                                Foreground="#5BA3D8"
                                                FontFamily="Consolas" FontSize="11"
                                                VerticalAlignment="Center"/>
 
-                                    <TextBlock Grid.Column="1"
+                                    <TextBlock Grid.Column="2"
                                                Text="{Binding Title}"
                                                Foreground="#CCDAEE"
                                                FontSize="11"
                                                TextTrimming="CharacterEllipsis"
                                                VerticalAlignment="Center"
-                                               Margin="4,0"
                                                ToolTip="{Binding Title}"/>
-
-                                    <Border Grid.Column="2"
-                                            Background="{Binding TypeColor}"
-                                            CornerRadius="2" Padding="4,1">
-                                        <TextBlock Text="{Binding TypeShort}"
-                                                   Foreground="White"
-                                                   FontSize="9" FontWeight="SemiBold"/>
-                                    </Border>
                                 </Grid>
                             </Border>
                         </DataTemplate>

@@ -30,13 +30,13 @@ public class WorkItemViewModel(WorkItem item)
 
     public Brush TypeColor => item.WorkItemType switch
     {
-        "Bug" => new SolidColorBrush(Color.FromRgb(0xCC, 0x33, 0x33)),
-        "User Story" => new SolidColorBrush(Color.FromRgb(0x5E, 0x35, 0xB1)),
-        "Task" => new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4)),
-        "Feature" => new SolidColorBrush(Color.FromRgb(0x22, 0x88, 0x44)),
-        "Epic" => new SolidColorBrush(Color.FromRgb(0xE6, 0x57, 0x22)),
-        "Test Case" => new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x00)),
-        _ => new SolidColorBrush(Color.FromRgb(0x55, 0x66, 0x77)),
+        "Bug"        => new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B)),  // 明るい赤
+        "User Story" => new SolidColorBrush(Color.FromRgb(0xBB, 0x99, 0xFF)),  // 明るい紫
+        "Task"       => new SolidColorBrush(Color.FromRgb(0x4D, 0xAA, 0xFF)),  // 明るい青
+        "Feature"    => new SolidColorBrush(Color.FromRgb(0x55, 0xCC, 0x88)),  // 明るい緑
+        "Epic"       => new SolidColorBrush(Color.FromRgb(0xFF, 0x99, 0x44)),  // オレンジ
+        "Test Case"  => new SolidColorBrush(Color.FromRgb(0xDD, 0xDD, 0x44)),  // 黄
+        _            => new SolidColorBrush(Color.FromRgb(0x88, 0x99, 0xAA)),  // グレー
     };
 
     /// <summary>コンテキストメニュー「リンクを作成」で生成するマークダウン形式のリンク</summary>

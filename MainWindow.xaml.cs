@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using TaskAzure.Services;
 using TaskAzure.ViewModels;
 using Clipboard = System.Windows.Clipboard;
@@ -24,8 +25,15 @@ public partial class MainWindow : Window
     }
 
     // ─── ドラッグ移動 ─────────────────────────────────────────────
-    private void OuterBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void Window_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // スクロールバー上のクリックはドラッグしない
+        var source = e.OriginalSource as DependencyObject;
+        while (source != null)
+        {
+            if (source is System.Windows.Controls.Primitives.ScrollBar) return;
+            source = VisualTreeHelper.GetParent(source);
+        }
         if (e.ButtonState == MouseButtonState.Pressed)
             DragMove();
     }
