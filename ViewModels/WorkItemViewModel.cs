@@ -39,6 +39,6 @@ public class WorkItemViewModel(WorkItem item)
         _            => new SolidColorBrush(Color.FromRgb(0x88, 0x99, 0xAA)),  // グレー
     };
 
-    /// <summary>コンテキストメニュー「リンクを作成」で生成するマークダウン形式のリンク</summary>
     public string MarkdownLink => $"[{TypeShort} {item.Id}: {item.Title}]({item.WebUrl})";
+    public string HtmlLink     => $"<a href=\"{item.WebUrl}\">{TypeShort} {item.Id}: {item.Title}</a>";
 }

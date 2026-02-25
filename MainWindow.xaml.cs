@@ -76,7 +76,40 @@ public partial class MainWindow : Window
 
     private void MenuCreateLink_Click(object sender, RoutedEventArgs e)
     {
-        if (GetVm(sender) is { } vm) SetClipboard(vm.MarkdownLink);
+        if (GetVm(sender) is not { } vm) return;
+        try
+        {
+            var data = new System.Windows.DataObject();
+            data.SetData(System.Windows.DataFormats.Text, vm.MarkdownLink);
+            data.SetData(System.Windows.DataFormats.Html, BuildHtmlClipboard(vm.HtmlLink));
+            Clipboard.SetDataObject(data);
+        }
+        catch { }
+    }
+
+    // Windows HTML クリップボード形式に必要なヘッダーを付与する
+    private static string BuildHtmlClipboard(string html)
+    {
+        const string header =
+            "Version:0.9\r\n" +
+            "StartHTML:00000000\r\n" +
+            "EndHTML:00000000\r\n" +
+            "StartFragment:00000000\r\n" +
+            "EndFragment:00000000\r\n";
+        const string pre  = "<html><body><!--StartFragment-->";
+        const string post = "<!--EndFragment--></body></html>";
+
+        var startHtml     = System.Text.Encoding.UTF8.GetByteCount(header);
+        var startFragment = startHtml + System.Text.Encoding.UTF8.GetByteCount(pre);
+        var endFragment   = startFragment + System.Text.Encoding.UTF8.GetByteCount(html);
+        var endHtml       = endFragment + System.Text.Encoding.UTF8.GetByteCount(post);
+
+        return header
+            .Replace("StartHTML:00000000",     $"StartHTML:{startHtml:D8}")
+            .Replace("EndHTML:00000000",       $"EndHTML:{endHtml:D8}")
+            .Replace("StartFragment:00000000", $"StartFragment:{startFragment:D8}")
+            .Replace("EndFragment:00000000",   $"EndFragment:{endFragment:D8}")
+            + pre + html + post;
     }
 
     private static void SetClipboard(string text)
