@@ -40,5 +40,5 @@ public class WorkItemViewModel(WorkItem item)
     };
 
     public string MarkdownLink => $"[{TypeShort} {item.Id}: {item.Title}]({item.WebUrl})";
-    public string HtmlLink     => $"<a href=\"{item.WebUrl}\">{TypeShort} {item.Id}: {item.Title}</a>";
+    public string HtmlLink     => $"<a href=\"{item.WebUrl}\">{TypeShort} {item.Id}</a>: {item.Title}";
 }
