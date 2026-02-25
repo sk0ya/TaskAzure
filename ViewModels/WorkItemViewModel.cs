@@ -40,5 +40,5 @@ public class WorkItemViewModel(WorkItem item)
     };
 
     /// <summary>コンテキストメニュー「リンクを作成」で生成するマークダウン形式のリンク</summary>
-    public string MarkdownLink => $"[#{item.Id} {item.Title}]({item.WebUrl})";
+    public string MarkdownLink => $"[{TypeShort} {item.Id}: {item.Title}]({item.WebUrl})";
 }
