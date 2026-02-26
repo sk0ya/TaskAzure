@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using TaskAzure.Models;
 using TaskAzure.Services;
 using Application = System.Windows.Application;
 
@@ -16,6 +17,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private ObservableCollection<WorkItemViewModel> _workItems = [];
     private ObservableCollection<PullRequestViewModel> _pullRequests = [];
+    private List<PrTarget> _prTargets = [];
     private bool _isLoading;
     private string _statusMessage = "";
     private string _lastUpdated = "";
@@ -67,6 +69,7 @@ public class MainViewModel : INotifyPropertyChanged
             ?? throw new InvalidOperationException($"PAT が取得できませんでした。環境変数 {s.PatEnvVarName} または Windows 資格情報マネージャーに PAT を設定してください。");
 
         _ado.Configure(s.OrganizationUrl, s.Project, pat);
+        _prTargets = s.PrTargets;
 
         await RefreshAsync();
 
@@ -87,7 +90,7 @@ public class MainViewModel : INotifyPropertyChanged
         try
         {
             var itemsTask = _ado.GetMyWorkItemsAsync(ct);
-            var prsTask   = _ado.GetMyPullRequestsAsync(ct);
+            var prsTask   = _ado.GetMyPullRequestsAsync(_prTargets, ct);
             await Task.WhenAll(itemsTask, prsTask);
             if (ct.IsCancellationRequested) return;
 

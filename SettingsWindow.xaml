@@ -99,7 +99,86 @@
 
         <!-- 更新間隔 -->
         <TextBlock Style="{StaticResource LabelStyle}" Text="自動更新間隔 (分)"/>
-        <TextBox x:Name="RefreshBox" Width="80" HorizontalAlignment="Left" Margin="0,0,0,24"/>
+        <TextBox x:Name="RefreshBox" Width="80" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+
+        <!-- PR 対象リポジトリ -->
+        <TextBlock Style="{StaticResource LabelStyle}" Text="PR 対象リポジトリ (複数指定可)" Margin="0,0,0,6"/>
+
+        <!-- 登録済みリスト -->
+        <Border Background="#1A2233" BorderBrush="#334466" BorderThickness="1"
+                CornerRadius="4" Padding="4" MinHeight="36" MaxHeight="140" Margin="0,0,0,6">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- 空のときのプレースホルダー -->
+                    <TextBlock Text="（未設定）" Foreground="#445566" FontSize="11"
+                               HorizontalAlignment="Center" Margin="0,6">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PrTargets.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ItemsControl ItemsSource="{Binding PrTargets}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="2,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding DisplayName}"
+                                               Foreground="#AABBDD" FontSize="12"
+                                               FontFamily="Consolas"
+                                               VerticalAlignment="Center" Margin="4,0"/>
+                                    <Button Grid.Column="1" Content="削除"
+                                            Style="{StaticResource DangerBtn}"
+                                            Tag="{Binding}"
+                                            Click="RemovePrTarget_Click"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- 追加フォーム -->
+        <Grid Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="PrProjectBox" Grid.Column="0"
+                     ToolTip="プロジェクト名"/>
+            <TextBox x:Name="PrRepoBox" Grid.Column="2"
+                     ToolTip="リポジトリ名"/>
+            <Button Grid.Column="4" Content="追加"
+                    Style="{StaticResource SecondaryBtn}"
+                    Padding="14,6"
+                    Click="AddPrTarget_Click"/>
+        </Grid>
+        <Grid Margin="0,0,0,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="プロジェクト名"
+                       Style="{StaticResource LabelStyle}" HorizontalAlignment="Center"/>
+            <TextBlock Grid.Column="2" Text="リポジトリ名"
+                       Style="{StaticResource LabelStyle}" HorizontalAlignment="Center"/>
+        </Grid>
 
         <!-- エラー表示 -->
         <TextBlock x:Name="ErrorText" Foreground="#FF6666" FontSize="12"

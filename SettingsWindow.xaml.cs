@@ -48,5 +48,19 @@ public partial class SettingsWindow : Window
         Close();
     }
 
+    private void AddPrTarget_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.AddPrTarget(PrProjectBox.Text, PrRepoBox.Text);
+        PrProjectBox.Clear();
+        PrRepoBox.Clear();
+        PrProjectBox.Focus();
+    }
+
+    private void RemovePrTarget_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: TaskAzure.Models.PrTarget t })
+            _vm.RemovePrTarget(t);
+    }
+
     private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
 }

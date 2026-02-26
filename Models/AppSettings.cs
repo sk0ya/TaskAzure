@@ -9,4 +9,5 @@ public class AppSettings
     public int RefreshIntervalMinutes { get; set; } = 5;
     public double WindowLeft { get; set; } = 100;
     public double WindowTop { get; set; } = 100;
+    public List<PrTarget> PrTargets { get; set; } = [];
 }

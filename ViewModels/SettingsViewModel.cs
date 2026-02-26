@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using TaskAzure.Models;
 using TaskAzure.Services;
 
 namespace TaskAzure.ViewModels;
@@ -14,6 +16,8 @@ public class SettingsViewModel : INotifyPropertyChanged
     private string _project = "";
     private string _patEnvVarName = "ADO_PAT";
     private int _refreshMinutes = 5;
+
+    public ObservableCollection<PrTarget> PrTargets { get; } = [];
 
     public string OrganizationUrl
     {
@@ -51,6 +55,14 @@ public class SettingsViewModel : INotifyPropertyChanged
         Load();
     }
 
+    public void AddPrTarget(string project, string repo)
+    {
+        if (string.IsNullOrWhiteSpace(project) || string.IsNullOrWhiteSpace(repo)) return;
+        PrTargets.Add(new PrTarget { Project = project.Trim(), Repository = repo.Trim() });
+    }
+
+    public void RemovePrTarget(PrTarget target) => PrTargets.Remove(target);
+
     private void Load()
     {
         var s = _settings.Load();
@@ -58,6 +70,8 @@ public class SettingsViewModel : INotifyPropertyChanged
         Project = s.Project;
         PatEnvVarName = string.IsNullOrWhiteSpace(s.PatEnvVarName) ? "ADO_PAT" : s.PatEnvVarName;
         RefreshIntervalMinutes = s.RefreshIntervalMinutes > 0 ? s.RefreshIntervalMinutes : 5;
+        PrTargets.Clear();
+        foreach (var t in s.PrTargets) PrTargets.Add(t);
     }
 
     public (bool ok, string error) Save(double winLeft, double winTop)
@@ -76,6 +90,7 @@ public class SettingsViewModel : INotifyPropertyChanged
         s.RefreshIntervalMinutes = RefreshIntervalMinutes;
         s.WindowLeft = winLeft;
         s.WindowTop = winTop;
+        s.PrTargets = [.. PrTargets];
 
         _settings.Save(s);
         return (true, "");

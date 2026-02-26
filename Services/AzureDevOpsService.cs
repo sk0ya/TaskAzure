@@ -91,17 +91,29 @@ public class AzureDevOpsService : IDisposable
         return result;
     }
 
-    public async Task<List<Models.PullRequest>> GetMyPullRequestsAsync(CancellationToken ct = default)
+    public async Task<List<Models.PullRequest>> GetMyPullRequestsAsync(
+        IReadOnlyList<Models.PrTarget> targets, CancellationToken ct = default)
     {
         if (_client == null) throw new InvalidOperationException("サービスが設定されていません。");
+        if (targets.Count == 0) return [];
 
         var userId = await GetCurrentUserIdAsync(ct);
-        var encodedProject = Uri.EscapeDataString(_project);
-        var url = $"{_orgUrl}/{encodedProject}/_apis/git/pullrequests" +
+
+        var tasks = targets.Select(t => FetchPrsForTargetAsync(t, userId, ct));
+        var results = await Task.WhenAll(tasks);
+        return [.. results.SelectMany(r => r)];
+    }
+
+    private async Task<List<Models.PullRequest>> FetchPrsForTargetAsync(
+        Models.PrTarget target, string userId, CancellationToken ct)
+    {
+        var encodedProject = Uri.EscapeDataString(target.Project);
+        var encodedRepo    = Uri.EscapeDataString(target.Repository);
+        var url = $"{_orgUrl}/{encodedProject}/_apis/git/repositories/{encodedRepo}/pullrequests" +
                   $"?searchCriteria.status=active&searchCriteria.creatorId={userId}&api-version=7.1";
 
-        var response = await _client.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
+        var response = await _client!.GetAsync(url, ct);
+        if (!response.IsSuccessStatusCode) return [];   // リポジトリ名誤りなどは無視
 
         var json = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(json);
@@ -109,17 +121,15 @@ public class AzureDevOpsService : IDisposable
         var result = new List<Models.PullRequest>();
         foreach (var item in doc.RootElement.GetProperty("value").EnumerateArray())
         {
-            var prId = item.GetProperty("pullRequestId").GetInt32();
+            var prId  = item.GetProperty("pullRequestId").GetInt32();
             var title = item.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
-            var repoName = item.GetProperty("repository").GetProperty("name").GetString() ?? "";
-            var encodedRepo = Uri.EscapeDataString(repoName);
 
             result.Add(new Models.PullRequest
             {
-                Id = prId,
-                Title = title,
-                RepositoryName = repoName,
-                WebUrl = $"{_orgUrl}/{encodedProject}/_git/{encodedRepo}/pullrequest/{prId}",
+                Id             = prId,
+                Title          = title,
+                RepositoryName = target.Repository,
+                WebUrl         = $"{_orgUrl}/{encodedProject}/_git/{encodedRepo}/pullrequest/{prId}",
             });
         }
         return result;
