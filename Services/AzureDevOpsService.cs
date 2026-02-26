@@ -110,7 +110,8 @@ public class AzureDevOpsService : IDisposable
         var encodedProject = Uri.EscapeDataString(target.Project);
         var encodedRepo    = Uri.EscapeDataString(target.Repository);
         var url = $"{_orgUrl}/{encodedProject}/_apis/git/repositories/{encodedRepo}/pullrequests" +
-                  $"?searchCriteria.status=active&searchCriteria.creatorId={userId}&api-version=7.1";
+                  $"?searchCriteria.status=active&searchCriteria.creatorId={userId}" +
+                  $"&$expand=workItemRefs&api-version=7.1";
 
         var response = await _client!.GetAsync(url, ct);
         if (!response.IsSuccessStatusCode) return [];   // リポジトリ名誤りなどは無視
@@ -124,12 +125,24 @@ public class AzureDevOpsService : IDisposable
             var prId  = item.GetProperty("pullRequestId").GetInt32();
             var title = item.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
 
+            var linkedIds = new List<int>();
+            if (item.TryGetProperty("workItemRefs", out var refs))
+            {
+                foreach (var r in refs.EnumerateArray())
+                {
+                    if (r.TryGetProperty("id", out var idProp)
+                        && int.TryParse(idProp.GetString(), out var wid))
+                        linkedIds.Add(wid);
+                }
+            }
+
             result.Add(new Models.PullRequest
             {
-                Id             = prId,
-                Title          = title,
-                RepositoryName = target.Repository,
-                WebUrl         = $"{_orgUrl}/{encodedProject}/_git/{encodedRepo}/pullrequest/{prId}",
+                Id                 = prId,
+                Title              = title,
+                RepositoryName     = target.Repository,
+                WebUrl             = $"{_orgUrl}/{encodedProject}/_git/{encodedRepo}/pullrequest/{prId}",
+                LinkedWorkItemIds  = linkedIds,
             });
         }
         return result;

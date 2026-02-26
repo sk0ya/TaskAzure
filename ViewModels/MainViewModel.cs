@@ -16,7 +16,6 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly CredentialService _cred;
 
     private ObservableCollection<WorkItemViewModel> _workItems = [];
-    private ObservableCollection<PullRequestViewModel> _pullRequests = [];
     private List<PrTarget> _prTargets = [];
     private bool _isLoading;
     private string _statusMessage = "";
@@ -28,12 +27,6 @@ public class MainViewModel : INotifyPropertyChanged
     {
         get => _workItems;
         private set { _workItems = value; OnPropertyChanged(); }
-    }
-
-    public ObservableCollection<PullRequestViewModel> PullRequests
-    {
-        get => _pullRequests;
-        private set { _pullRequests = value; OnPropertyChanged(); }
     }
 
     public bool IsLoading
@@ -97,12 +90,25 @@ public class MainViewModel : INotifyPropertyChanged
             var items = itemsTask.Result;
             var prs   = prsTask.Result;
 
-            WorkItems = new ObservableCollection<WorkItemViewModel>(
-                items.Select(i => new WorkItemViewModel(i)));
-            PullRequests = new ObservableCollection<PullRequestViewModel>(
-                prs.Select(p => new PullRequestViewModel(p)));
+            // WorkItem ViewModel を先に作成
+            var workItemVms = items.Select(i => new WorkItemViewModel(i)).ToList();
 
-            var prPart = prs.Count > 0 ? $" / PR {prs.Count} 件" : "";
+            // PR を紐付けられた WorkItem の下にセット
+            var vmById = workItemVms.ToDictionary(v => v.Id);
+            foreach (var pr in prs)
+            {
+                var prVm = new PullRequestViewModel(pr);
+                foreach (var wid in pr.LinkedWorkItemIds)
+                {
+                    if (vmById.TryGetValue(wid, out var wVm))
+                        wVm.LinkedPullRequests.Add(prVm);
+                }
+            }
+
+            WorkItems = new ObservableCollection<WorkItemViewModel>(workItemVms);
+
+            var linkedPrCount = workItemVms.Sum(v => v.LinkedPullRequests.Count);
+            var prPart = linkedPrCount > 0 ? $" / PR {linkedPrCount} 件" : "";
             StatusMessage = $"{items.Count} 件{prPart}";
             LastUpdated = $"更新: {DateTime.Now:HH:mm}";
         }

@@ -62,94 +62,21 @@
                 <ItemsControl ItemsSource="{Binding WorkItems}" Padding="3,2">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:WorkItemViewModel}">
-                            <Border Tag="{Binding}" Padding="6,4" CornerRadius="4"
-                                    Background="Transparent">
-                                <Border.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Web で開く (_W)"
-                                                  Click="MenuOpenWeb_Click" Tag="{Binding}"/>
-                                        <Separator/>
-                                        <MenuItem Header="ID をコピー (_I)"
-                                                  Click="MenuCopyId_Click" Tag="{Binding}"/>
-                                        <MenuItem Header="タイトルをコピー (_T)"
-                                                  Click="MenuCopyTitle_Click" Tag="{Binding}"/>
-                                        <MenuItem Header="リンクを作成 (_L)"
-                                                  Click="MenuCreateLink_Click" Tag="{Binding}"/>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Style.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#18FFFFFF"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding TypeShort}"
-                                               Foreground="{Binding TypeColor}"
-                                               FontFamily="Consolas" FontSize="11" FontWeight="SemiBold"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
-
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Title}"
-                                               Foreground="#CCDAEE"
-                                               FontSize="13"
-                                               TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center"
-                                               ToolTip="{Binding Title}"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- PR セクション (PR が 0 件のときは非表示) -->
-                <StackPanel>
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Visible"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding PullRequests.Count}" Value="0">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-
-                    <!-- 区切り線 -->
-                    <Rectangle Height="1" Margin="6,4,6,0" Fill="#22AACCFF"/>
-
-                    <!-- PR ヘッダー -->
-                    <TextBlock Text="Pull Requests"
-                               Foreground="#556699" FontSize="10" FontWeight="SemiBold"
-                               Margin="8,3,0,1"/>
-
-                    <ItemsControl ItemsSource="{Binding PullRequests}" Padding="3,2">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:PullRequestViewModel}">
+                            <StackPanel>
+                                <!-- WorkItem 行 -->
                                 <Border Tag="{Binding}" Padding="6,4" CornerRadius="4"
                                         Background="Transparent">
                                     <Border.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="Web で開く (_W)"
-                                                      Click="MenuOpenPR_Click" Tag="{Binding}"/>
+                                                      Click="MenuOpenWeb_Click" Tag="{Binding}"/>
                                             <Separator/>
                                             <MenuItem Header="ID をコピー (_I)"
-                                                      Click="MenuCopyPRId_Click" Tag="{Binding}"/>
+                                                      Click="MenuCopyId_Click" Tag="{Binding}"/>
                                             <MenuItem Header="タイトルをコピー (_T)"
-                                                      Click="MenuCopyPRTitle_Click" Tag="{Binding}"/>
+                                                      Click="MenuCopyTitle_Click" Tag="{Binding}"/>
                                             <MenuItem Header="リンクを作成 (_L)"
-                                                      Click="MenuCreatePRLink_Click" Tag="{Binding}"/>
+                                                      Click="MenuCreateLink_Click" Tag="{Binding}"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <Border.Style>
@@ -169,25 +96,91 @@
                                         </Grid.ColumnDefinitions>
 
                                         <TextBlock Grid.Column="0"
-                                                   Text="PR"
-                                                   Foreground="#66AAFF"
+                                                   Text="{Binding TypeShort}"
+                                                   Foreground="{Binding TypeColor}"
                                                    FontFamily="Consolas" FontSize="11" FontWeight="SemiBold"
                                                    VerticalAlignment="Center"
                                                    Margin="0,0,8,0"/>
 
                                         <TextBlock Grid.Column="1"
                                                    Text="{Binding Title}"
-                                                   Foreground="#AACCDD"
+                                                   Foreground="#CCDAEE"
                                                    FontSize="13"
                                                    TextTrimming="CharacterEllipsis"
                                                    VerticalAlignment="Center"
                                                    ToolTip="{Binding Title}"/>
                                     </Grid>
                                 </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+
+                                <!-- リンクされた PR 行 (0件のときは非表示) -->
+                                <ItemsControl ItemsSource="{Binding LinkedPullRequests}"
+                                              Margin="16,0,0,2">
+                                    <ItemsControl.Style>
+                                        <Style TargetType="ItemsControl">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding LinkedPullRequests.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ItemsControl.Style>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:PullRequestViewModel}">
+                                            <Border Tag="{Binding}" Padding="6,3" CornerRadius="3"
+                                                    Background="Transparent">
+                                                <Border.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="Web で開く (_W)"
+                                                                  Click="MenuOpenPR_Click" Tag="{Binding}"/>
+                                                        <Separator/>
+                                                        <MenuItem Header="ID をコピー (_I)"
+                                                                  Click="MenuCopyPRId_Click" Tag="{Binding}"/>
+                                                        <MenuItem Header="タイトルをコピー (_T)"
+                                                                  Click="MenuCopyPRTitle_Click" Tag="{Binding}"/>
+                                                        <MenuItem Header="リンクを作成 (_L)"
+                                                                  Click="MenuCreatePRLink_Click" Tag="{Binding}"/>
+                                                    </ContextMenu>
+                                                </Border.ContextMenu>
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#14FFFFFF"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="PR"
+                                                               Foreground="#5588CC"
+                                                               FontFamily="Consolas" FontSize="10" FontWeight="SemiBold"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,6,0"/>
+
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding Title}"
+                                                               Foreground="#8AAABB"
+                                                               FontSize="11"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               VerticalAlignment="Center"
+                                                               ToolTip="{Binding Title}"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
     </Border>

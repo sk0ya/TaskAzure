@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Brush = System.Windows.Media.Brush;
 using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using Color = System.Windows.Media.Color;
@@ -41,4 +42,7 @@ public class WorkItemViewModel(WorkItem item)
 
     public string MarkdownLink => $"[{TypeShort} {item.Id}: {item.Title}]({item.WebUrl})";
     public string HtmlLink     => $"<a href=\"{item.WebUrl}\">{TypeShort} {item.Id}</a>: {item.Title}";
+
+    /// <summary>この WorkItem にリンクされた PR (RefreshAsync で設定)</summary>
+    public List<PullRequestViewModel> LinkedPullRequests { get; } = [];
 }
