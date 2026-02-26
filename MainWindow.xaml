@@ -66,13 +66,13 @@
                                     Background="Transparent">
                                 <Border.ContextMenu>
                                     <ContextMenu>
+                                        <MenuItem Header="Web で開く (_W)"
+                                                  Click="MenuOpenWeb_Click" Tag="{Binding}"/>
+                                        <Separator/>
                                         <MenuItem Header="ID をコピー (_I)"
                                                   Click="MenuCopyId_Click" Tag="{Binding}"/>
                                         <MenuItem Header="タイトルをコピー (_T)"
                                                   Click="MenuCopyTitle_Click" Tag="{Binding}"/>
-                                        <MenuItem Header="Web で開く (_W)"
-                                                  Click="MenuOpenWeb_Click" Tag="{Binding}"/>
-                                        <Separator/>
                                         <MenuItem Header="リンクを作成 (_L)"
                                                   Click="MenuCreateLink_Click" Tag="{Binding}"/>
                                     </ContextMenu>
