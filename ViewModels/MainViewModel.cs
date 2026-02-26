@@ -15,6 +15,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly CredentialService _cred;
 
     private ObservableCollection<WorkItemViewModel> _workItems = [];
+    private ObservableCollection<PullRequestViewModel> _pullRequests = [];
     private bool _isLoading;
     private string _statusMessage = "";
     private string _lastUpdated = "";
@@ -25,6 +26,12 @@ public class MainViewModel : INotifyPropertyChanged
     {
         get => _workItems;
         private set { _workItems = value; OnPropertyChanged(); }
+    }
+
+    public ObservableCollection<PullRequestViewModel> PullRequests
+    {
+        get => _pullRequests;
+        private set { _pullRequests = value; OnPropertyChanged(); }
     }
 
     public bool IsLoading
@@ -79,13 +86,21 @@ public class MainViewModel : INotifyPropertyChanged
         StatusMessage = "読み込み中...";
         try
         {
-            var items = await _ado.GetMyWorkItemsAsync(ct);
+            var itemsTask = _ado.GetMyWorkItemsAsync(ct);
+            var prsTask   = _ado.GetMyPullRequestsAsync(ct);
+            await Task.WhenAll(itemsTask, prsTask);
             if (ct.IsCancellationRequested) return;
+
+            var items = itemsTask.Result;
+            var prs   = prsTask.Result;
 
             WorkItems = new ObservableCollection<WorkItemViewModel>(
                 items.Select(i => new WorkItemViewModel(i)));
+            PullRequests = new ObservableCollection<PullRequestViewModel>(
+                prs.Select(p => new PullRequestViewModel(p)));
 
-            StatusMessage = $"{items.Count} 件";
+            var prPart = prs.Count > 0 ? $" / PR {prs.Count} 件" : "";
+            StatusMessage = $"{items.Count} 件{prPart}";
             LastUpdated = $"更新: {DateTime.Now:HH:mm}";
         }
         catch (OperationCanceledException)

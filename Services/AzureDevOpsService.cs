@@ -11,12 +11,14 @@ public class AzureDevOpsService : IDisposable
     private HttpClient? _client;
     private string _orgUrl = string.Empty;
     private string _project = string.Empty;
+    private string? _currentUserId;
 
     public void Configure(string organizationUrl, string project, string pat)
     {
         _client?.Dispose();
         _orgUrl = organizationUrl.TrimEnd('/');
         _project = project;
+        _currentUserId = null;
 
         _client = new HttpClient();
         var token = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{pat}"));
@@ -87,6 +89,57 @@ public class AzureDevOpsService : IDisposable
             });
         }
         return result;
+    }
+
+    public async Task<List<Models.PullRequest>> GetMyPullRequestsAsync(CancellationToken ct = default)
+    {
+        if (_client == null) throw new InvalidOperationException("サービスが設定されていません。");
+
+        var userId = await GetCurrentUserIdAsync(ct);
+        var encodedProject = Uri.EscapeDataString(_project);
+        var url = $"{_orgUrl}/{encodedProject}/_apis/git/pullrequests" +
+                  $"?searchCriteria.status=active&searchCriteria.creatorId={userId}&api-version=7.1";
+
+        var response = await _client.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(json);
+
+        var result = new List<Models.PullRequest>();
+        foreach (var item in doc.RootElement.GetProperty("value").EnumerateArray())
+        {
+            var prId = item.GetProperty("pullRequestId").GetInt32();
+            var title = item.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
+            var repoName = item.GetProperty("repository").GetProperty("name").GetString() ?? "";
+            var encodedRepo = Uri.EscapeDataString(repoName);
+
+            result.Add(new Models.PullRequest
+            {
+                Id = prId,
+                Title = title,
+                RepositoryName = repoName,
+                WebUrl = $"{_orgUrl}/{encodedProject}/_git/{encodedRepo}/pullrequest/{prId}",
+            });
+        }
+        return result;
+    }
+
+    private async Task<string> GetCurrentUserIdAsync(CancellationToken ct)
+    {
+        if (_currentUserId != null) return _currentUserId;
+
+        var url = $"{_orgUrl}/_apis/connectionData";
+        var response = await _client!.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(json);
+        _currentUserId = doc.RootElement
+            .GetProperty("authenticatedUser")
+            .GetProperty("id")
+            .GetString() ?? "";
+        return _currentUserId;
     }
 
     public void Dispose() => _client?.Dispose();

@@ -59,6 +59,16 @@ public partial class MainWindow : Window
         return null;
     }
 
+    private static PullRequestViewModel? GetPrVm(object sender)
+    {
+        if (sender is MenuItem { Tag: PullRequestViewModel vm }) return vm;
+        if (sender is MenuItem mi
+            && mi.Parent is ContextMenu cm
+            && cm.PlacementTarget is FrameworkElement fe
+            && fe.Tag is PullRequestViewModel vm2) return vm2;
+        return null;
+    }
+
     private void MenuCopyId_Click(object sender, RoutedEventArgs e)
     {
         if (GetVm(sender) is { } vm) SetClipboard(vm.IdDisplay);
@@ -110,6 +120,34 @@ public partial class MainWindow : Window
             .Replace("StartFragment:00000000", $"StartFragment:{startFragment:D8}")
             .Replace("EndFragment:00000000",   $"EndFragment:{endFragment:D8}")
             + pre + html + post;
+    }
+
+    private void MenuOpenPR_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetPrVm(sender) is { } vm) OpenUrl(vm.WebUrl);
+    }
+
+    private void MenuCopyPRId_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetPrVm(sender) is { } vm) SetClipboard(vm.IdDisplay);
+    }
+
+    private void MenuCopyPRTitle_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetPrVm(sender) is { } vm) SetClipboard(vm.Title);
+    }
+
+    private void MenuCreatePRLink_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetPrVm(sender) is not { } vm) return;
+        try
+        {
+            var data = new System.Windows.DataObject();
+            data.SetData(System.Windows.DataFormats.Text, vm.MarkdownLink);
+            data.SetData(System.Windows.DataFormats.Html, BuildHtmlClipboard(vm.HtmlLink));
+            Clipboard.SetDataObject(data);
+        }
+        catch { }
     }
 
     private static void SetClipboard(string text)
