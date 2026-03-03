@@ -71,7 +71,7 @@ public partial class MainWindow : Window
 
     private void MenuCopyId_Click(object sender, RoutedEventArgs e)
     {
-        if (GetVm(sender) is { } vm) SetClipboard(vm.IdDisplay);
+        if (GetVm(sender) is { } vm) SetClipboard(vm.Id.ToString());
     }
 
     private void MenuCopyTitle_Click(object sender, RoutedEventArgs e)
@@ -129,7 +129,7 @@ public partial class MainWindow : Window
 
     private void MenuCopyPRId_Click(object sender, RoutedEventArgs e)
     {
-        if (GetPrVm(sender) is { } vm) SetClipboard(vm.IdDisplay);
+        if (GetPrVm(sender) is { } vm) SetClipboard(vm.Id.ToString());
     }
 
     private void MenuCopyPRTitle_Click(object sender, RoutedEventArgs e)
