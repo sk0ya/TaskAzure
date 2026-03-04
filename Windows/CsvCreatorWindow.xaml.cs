@@ -40,6 +40,7 @@ public partial class CsvCreatorWindow : Window
 
     private readonly CsvCreatorViewModel _vm;
     private DataTable _previewTable = new();
+    private bool _suppressComboFilter;
 
     public CsvCreatorWindow(CsvCreatorViewModel vm)
     {
@@ -156,6 +157,7 @@ public partial class CsvCreatorWindow : Window
 
     private void UserComboBox_FilterTextChanged(object sender, TextChangedEventArgs e)
     {
+        if (_suppressComboFilter) return;
         if (sender is not WpfComboBox combo) return;
         if (!combo.IsEditable) return;
         if (!combo.IsKeyboardFocusWithin && !combo.IsDropDownOpen) return;
@@ -196,7 +198,7 @@ public partial class CsvCreatorWindow : Window
             combo.IsDropDownOpen = true;
     }
 
-    private static void ResetComboFilter(WpfComboBox combo)
+    private void ResetComboFilter(WpfComboBox combo)
     {
         var view = CollectionViewSource.GetDefaultView(combo.ItemsSource);
         if (view != null && view.CanFilter)
@@ -212,7 +214,17 @@ public partial class CsvCreatorWindow : Window
             }
         }
 
-        combo.Text = combo.SelectedItem is AdoUser user ? user.DisplayName : "";
+        // TextChangedEvent を抑制してから Text を設定する。
+        // 抑制しないと FilterTextChanged が発火しドロップダウンが再オープンするループになる。
+        _suppressComboFilter = true;
+        try
+        {
+            combo.Text = combo.SelectedItem is AdoUser user ? user.DisplayName : "";
+        }
+        finally
+        {
+            _suppressComboFilter = false;
+        }
     }
 
     private static void EnsureOutputSelectionColumn(DataTable table)

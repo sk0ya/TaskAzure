@@ -61,10 +61,6 @@
             <Setter Property="StaysOpenOnEdit" Value="True"/>
             <Setter Property="Foreground" Value="#EAF6FF"/>
             <Setter Property="Background" Value="#252B42"/>
-            <Style.Resources>
-                <Style x:Key="{x:Static ComboBox.TextBoxStyleKey}" TargetType="{x:Type TextBox}"
-                       BasedOn="{StaticResource AppDarkComboEditableTextBoxStyle}"/>
-            </Style.Resources>
         </Style>
         <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Background" Value="#0078D4"/>
@@ -155,6 +151,18 @@
                     <ComboBox.Style>
                         <Style TargetType="ComboBox" BasedOn="{StaticResource UserVariableComboStyle}">
                             <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Resources>
+                                <Style x:Key="{x:Static ComboBox.TextBoxStyleKey}" TargetType="{x:Type TextBox}">
+                                    <Setter Property="Background" Value="#252B42"/>
+                                    <Setter Property="Foreground" Value="#EAF6FF"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Padding" Value="3,1,20,1"/>
+                                    <Setter Property="CaretBrush" Value="#FFFFFF"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    <Setter Property="SelectionBrush" Value="#2A3A5A"/>
+                                    <Setter Property="SelectionOpacity" Value="1"/>
+                                </Style>
+                            </Style.Resources>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Kind}" Value="{x:Static vm:VariableKind.User}">
                                     <Setter Property="Visibility" Value="Visible"/>
