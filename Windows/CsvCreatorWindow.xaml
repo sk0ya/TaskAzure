@@ -27,15 +27,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="CaretBrush" Value="White"/>
         </Style>
-        <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#2A2A3E"/>
-            <Setter Property="Foreground" Value="#DDEEFF"/>
-            <Setter Property="BorderBrush" Value="#334466"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="6,5"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-        <Style TargetType="ComboBoxItem">
+        <Style x:Key="DarkComboBoxItemStyle" TargetType="ComboBoxItem">
             <Setter Property="Background" Value="#2A2A3E"/>
             <Setter Property="Foreground" Value="#DDEEFF"/>
             <Setter Property="Padding" Value="6,4"/>
@@ -51,6 +43,18 @@
                     <Setter Property="Foreground" Value="#667799"/>
                 </Trigger>
             </Style.Triggers>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#2A2A3E"/>
+            <Setter Property="Foreground" Value="#DDEEFF"/>
+            <Setter Property="BorderBrush" Value="#334466"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextElement.Foreground" Value="#DDEEFF"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItemStyle}"/>
+        </Style>
+        <Style TargetType="ComboBoxItem" BasedOn="{StaticResource DarkComboBoxItemStyle}">
         </Style>
         <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Background" Value="#0078D4"/>
@@ -134,8 +138,12 @@
                 <!-- ユーザー選択 -->
                 <ComboBox Grid.Column="1"
                           ItemsSource="{Binding Users}"
-                          SelectedItem="{Binding SelectedUser}"
-                          DisplayMemberPath="DisplayName">
+                          SelectedItem="{Binding SelectedUser}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayName}" Foreground="#DDEEFF"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
                     <ComboBox.Style>
                         <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -205,8 +213,13 @@
                            Style="{StaticResource LabelStyle}" VerticalAlignment="Center"/>
                 <ComboBox Grid.Row="1" Grid.Column="1"
                           ItemsSource="{Binding Templates}"
-                          SelectedItem="{Binding SelectedTemplate}"
-                          DisplayMemberPath="Name"/>
+                          SelectedItem="{Binding SelectedTemplate}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" Foreground="#DDEEFF"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
             </Grid>
         </Border>
 
