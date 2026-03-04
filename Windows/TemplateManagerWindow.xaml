@@ -117,16 +117,6 @@
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="BorderBrush" Value="#334466"/>
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
-            <Setter Property="ContextMenu">
-                <Setter.Value>
-                    <ContextMenu>
-                        <MenuItem Header="左に列を挿入" Click="InsertColumnLeft_Click"/>
-                        <MenuItem Header="右に列を挿入" Click="InsertColumnRight_Click"/>
-                        <Separator/>
-                        <MenuItem Header="この列を削除" Click="DeleteColumnFromHeader_Click"/>
-                    </ContextMenu>
-                </Setter.Value>
-            </Setter>
         </Style>
         <Style TargetType="DataGridRowHeader">
             <Setter Property="Background" Value="#252540"/>
@@ -134,16 +124,6 @@
             <Setter Property="BorderBrush" Value="#334466"/>
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="ContextMenu">
-                <Setter.Value>
-                    <ContextMenu>
-                        <MenuItem Header="上に行を挿入" Click="InsertRowAbove_Click"/>
-                        <MenuItem Header="下に行を挿入" Click="InsertRowBelow_Click"/>
-                        <Separator/>
-                        <MenuItem Header="この行を削除" Click="DeleteRowFromHeader_Click"/>
-                    </ContextMenu>
-                </Setter.Value>
-            </Setter>
         </Style>
         <Style TargetType="DataGridCell">
             <Setter Property="Background" Value="Transparent"/>
@@ -251,6 +231,7 @@
                           HeadersVisibility="All"
                           LoadingRow="CsvGrid_LoadingRow"
                           CellEditEnding="CsvGrid_CellEditEnding"
+                          PreviewMouseRightButtonDown="CsvGrid_PreviewMouseRightButtonDown"
                           PreviewKeyDown="CsvGrid_PreviewKeyDown"/>
             </Grid>
 

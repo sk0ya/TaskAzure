@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using TaskAzure.Models;
 using TaskAzure.Services;
@@ -265,6 +266,79 @@ public partial class TemplateManagerWindow : Window
         Dispatcher.BeginInvoke(ScheduleAutoSave, DispatcherPriority.Background);
     }
 
+    private void CsvGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_editingTemplate == null) return;
+
+        var source = e.OriginalSource as DependencyObject;
+
+        var rowHeader = FindAncestor<DataGridRowHeader>(source);
+        if (rowHeader?.DataContext is DataRowView rowView)
+        {
+            var rowIndex = _dataTable.Rows.IndexOf(rowView.Row);
+            if (rowIndex >= 0)
+            {
+                OpenContextMenu(BuildRowHeaderContextMenu(rowIndex), e);
+                return;
+            }
+        }
+
+        var colHeader = FindAncestor<DataGridColumnHeader>(source);
+        if (colHeader?.Column != null)
+        {
+            OpenContextMenu(BuildColumnHeaderContextMenu(colHeader.Column.DisplayIndex), e);
+            return;
+        }
+
+        CsvGrid.ContextMenu = null;
+    }
+
+    private void OpenContextMenu(ContextMenu menu, MouseButtonEventArgs e)
+    {
+        CsvGrid.ContextMenu = menu;
+        menu.PlacementTarget = CsvGrid;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    private ContextMenu BuildRowHeaderContextMenu(int rowIndex)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(CreateMenuItem("上に行を挿入", () => InsertRowAt(rowIndex)));
+        menu.Items.Add(CreateMenuItem("下に行を挿入", () => InsertRowAt(rowIndex + 1)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(CreateMenuItem("この行を削除", () => DeleteRowAt(rowIndex)));
+        return menu;
+    }
+
+    private ContextMenu BuildColumnHeaderContextMenu(int colIndex)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(CreateMenuItem("左に列を挿入", () => InsertColumnAt(colIndex)));
+        menu.Items.Add(CreateMenuItem("右に列を挿入", () => InsertColumnAt(colIndex + 1)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(CreateMenuItem("この列を削除", () => DeleteColumnAt(colIndex)));
+        return menu;
+    }
+
+    private static MenuItem CreateMenuItem(string header, Action onClick)
+    {
+        var item = new MenuItem { Header = header };
+        item.Click += (_, _) => onClick();
+        return item;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current != null)
+        {
+            if (current is T target) return target;
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
+    }
+
     private void CsvGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key != Key.V || (Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
@@ -355,40 +429,6 @@ public partial class TemplateManagerWindow : Window
         }
     }
 
-    private void InsertRowAbove_Click(object sender, RoutedEventArgs e)
-    {
-        var rowIndex = GetRowIndexFromContext(sender);
-        if (rowIndex is null) return;
-        InsertRowAt(rowIndex.Value);
-    }
-
-    private void InsertRowBelow_Click(object sender, RoutedEventArgs e)
-    {
-        var rowIndex = GetRowIndexFromContext(sender);
-        if (rowIndex is null) return;
-        InsertRowAt(rowIndex.Value + 1);
-    }
-
-    private void DeleteRowFromHeader_Click(object sender, RoutedEventArgs e)
-    {
-        var rowIndex = GetRowIndexFromContext(sender);
-        if (rowIndex is null) return;
-        DeleteRowAt(rowIndex.Value);
-    }
-
-    private int? GetRowIndexFromContext(object sender)
-    {
-        if (sender is not MenuItem item ||
-            item.Parent is not ContextMenu menu ||
-            menu.PlacementTarget is not DataGridRowHeader rowHeader)
-            return null;
-
-        if (rowHeader.DataContext is DataRowView rowView)
-            return _dataTable.Rows.IndexOf(rowView.Row);
-
-        return null;
-    }
-
     private void InsertRowAt(int rowIndex)
     {
         if (_editingTemplate == null) return;
@@ -420,38 +460,6 @@ public partial class TemplateManagerWindow : Window
         _dataTable.Rows.RemoveAt(rowIndex);
         CsvGrid.Items.Refresh();
         ScheduleAutoSave();
-    }
-
-    private void InsertColumnLeft_Click(object sender, RoutedEventArgs e)
-    {
-        var colIndex = GetColumnIndexFromContext(sender);
-        if (colIndex is null) return;
-        InsertColumnAt(colIndex.Value);
-    }
-
-    private void InsertColumnRight_Click(object sender, RoutedEventArgs e)
-    {
-        var colIndex = GetColumnIndexFromContext(sender);
-        if (colIndex is null) return;
-        InsertColumnAt(colIndex.Value + 1);
-    }
-
-    private void DeleteColumnFromHeader_Click(object sender, RoutedEventArgs e)
-    {
-        var colIndex = GetColumnIndexFromContext(sender);
-        if (colIndex is null) return;
-        DeleteColumnAt(colIndex.Value);
-    }
-
-    private int? GetColumnIndexFromContext(object sender)
-    {
-        if (sender is not MenuItem item ||
-            item.Parent is not ContextMenu menu ||
-            menu.PlacementTarget is not DataGridColumnHeader colHeader ||
-            colHeader.Column == null)
-            return null;
-
-        return colHeader.Column.DisplayIndex;
     }
 
     private void InsertColumnAt(int colIndex)
