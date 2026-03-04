@@ -4,16 +4,13 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using TaskAzure.Models;
 using TaskAzure.Services;
 using TaskAzure.ViewModels;
 using MessageBox = System.Windows.MessageBox;
 using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 using WpfBinding = System.Windows.Data.Binding;
 using WpfCheckBox = System.Windows.Controls.CheckBox;
-using WpfComboBox = System.Windows.Controls.ComboBox;
 using WpfHorizontalAlignment = System.Windows.HorizontalAlignment;
-using WpfTextBox = System.Windows.Controls.TextBox;
 using WpfVerticalAlignment = System.Windows.VerticalAlignment;
 
 namespace TaskAzure.Windows;
@@ -40,7 +37,6 @@ public partial class CsvCreatorWindow : Window
 
     private readonly CsvCreatorViewModel _vm;
     private DataTable _previewTable = new();
-    private bool _suppressComboFilter;
 
     public CsvCreatorWindow(CsvCreatorViewModel vm)
     {
@@ -140,91 +136,6 @@ public partial class CsvCreatorWindow : Window
     {
         _vm.PreviewRefreshRequested -= RefreshPreview;
         base.OnClosed(e);
-    }
-
-    private void UserComboBox_Loaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not WpfComboBox combo) return;
-        combo.RemoveHandler(WpfTextBox.TextChangedEvent, new TextChangedEventHandler(UserComboBox_FilterTextChanged));
-        combo.AddHandler(WpfTextBox.TextChangedEvent, new TextChangedEventHandler(UserComboBox_FilterTextChanged));
-    }
-
-    private void UserComboBox_DropDownClosed(object sender, EventArgs e)
-    {
-        if (sender is not WpfComboBox combo) return;
-        ResetComboFilter(combo);
-    }
-
-    private void UserComboBox_FilterTextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_suppressComboFilter) return;
-        if (sender is not WpfComboBox combo) return;
-        if (!combo.IsEditable) return;
-        if (!combo.IsKeyboardFocusWithin && !combo.IsDropDownOpen) return;
-
-        var view = CollectionViewSource.GetDefaultView(combo.ItemsSource);
-        if (view == null) return;
-        if (!view.CanFilter) return;
-
-        var filterText = combo.Text?.Trim() ?? "";
-        if (string.IsNullOrEmpty(filterText))
-        {
-            try
-            {
-                view.Filter = null;
-                view.Refresh();
-            }
-            catch
-            {
-                // フィルタ未対応Viewでも落とさない
-            }
-            return;
-        }
-
-        try
-        {
-            view.Filter = item =>
-                item is AdoUser user &&
-                (user.DisplayName.Contains(filterText, StringComparison.OrdinalIgnoreCase)
-                 || user.UniqueName.Contains(filterText, StringComparison.OrdinalIgnoreCase));
-            view.Refresh();
-        }
-        catch
-        {
-            return;
-        }
-
-        if (!combo.IsDropDownOpen)
-            combo.IsDropDownOpen = true;
-    }
-
-    private void ResetComboFilter(WpfComboBox combo)
-    {
-        var view = CollectionViewSource.GetDefaultView(combo.ItemsSource);
-        if (view != null && view.CanFilter)
-        {
-            try
-            {
-                view.Filter = null;
-                view.Refresh();
-            }
-            catch
-            {
-                // フィルタ解除失敗でも続行
-            }
-        }
-
-        // TextChangedEvent を抑制してから Text を設定する。
-        // 抑制しないと FilterTextChanged が発火しドロップダウンが再オープンするループになる。
-        _suppressComboFilter = true;
-        try
-        {
-            combo.Text = combo.SelectedItem is AdoUser user ? user.DisplayName : "";
-        }
-        finally
-        {
-            _suppressComboFilter = false;
-        }
     }
 
     private static void EnsureOutputSelectionColumn(DataTable table)

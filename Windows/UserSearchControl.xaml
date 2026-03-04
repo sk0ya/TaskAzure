@@ -1,0 +1,150 @@
+<UserControl x:Class="TaskAzure.Windows.UserSearchControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <Grid>
+        <!-- メインボーダー：テキストボックス＋矢印ボタン -->
+        <Border x:Name="MainBorder"
+                Background="#2A2A3E"
+                BorderBrush="#334466"
+                BorderThickness="1"
+                CornerRadius="3">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="24"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox x:Name="SearchBox"
+                         Grid.Column="0"
+                         Background="Transparent"
+                         Foreground="#EAF6FF"
+                         BorderThickness="0"
+                         Padding="6,5"
+                         FontSize="12"
+                         CaretBrush="White"
+                         SelectionBrush="#2A3A5A"
+                         SelectionOpacity="1"
+                         VerticalContentAlignment="Center"
+                         TextChanged="SearchBox_TextChanged"
+                         GotKeyboardFocus="SearchBox_GotKeyboardFocus"
+                         PreviewKeyDown="SearchBox_PreviewKeyDown"/>
+
+                <!-- フィルタ未入力時のプレースホルダー -->
+                <TextBlock Grid.Column="0"
+                           Text="ユーザーを検索..."
+                           Foreground="#556677"
+                           FontSize="12"
+                           Padding="7,5"
+                           VerticalAlignment="Center"
+                           IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <!-- ドロップダウン矢印ボタン -->
+                <Button Grid.Column="1"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Focusable="False"
+                        Cursor="Hand"
+                        Click="ArrowBtn_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="Transparent">
+                                <Path Data="M0,0 L4,5 L8,0"
+                                      Stroke="#8899BB" StrokeThickness="1.5"
+                                      StrokeLineJoin="Round"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ドロップダウンポップアップ -->
+        <Popup x:Name="DropdownPopup"
+               PlacementTarget="{Binding ElementName=MainBorder}"
+               Placement="Bottom"
+               AllowsTransparency="True"
+               Focusable="False"
+               StaysOpen="False"
+               Closed="DropdownPopup_Closed">
+            <Border Background="#252535"
+                    BorderBrush="#334466"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    MinWidth="{Binding ActualWidth, ElementName=MainBorder}"
+                    MaxHeight="220">
+                <Grid>
+                    <TextBlock x:Name="NoResultsText"
+                               Text="（一致するユーザーなし）"
+                               Foreground="#556677"
+                               FontSize="11"
+                               FontStyle="Italic"
+                               Padding="8,6"
+                               Visibility="Collapsed"/>
+                    <ListBox x:Name="UserList"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Foreground="#DDEEFF"
+                             FontSize="12"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             KeyboardNavigation.DirectionalNavigation="Cycle"
+                             SelectionChanged="UserList_SelectionChanged"
+                             PreviewKeyDown="UserList_PreviewKeyDown">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="8,5"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="#DDEEFF"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="Bd"
+                                                    Background="{TemplateBinding Background}"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#2A3A5A"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#106EBE"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               FontSize="12"/>
+                                    <TextBlock Text="{Binding UniqueName}"
+                                               FontSize="10" Foreground="#7799BB"
+                                               Margin="0,1,0,0"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>
