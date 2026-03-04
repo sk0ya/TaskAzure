@@ -3,72 +3,50 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root">
     <Grid>
-        <!-- メインボーダー：テキストボックス＋矢印ボタン -->
+        <!-- メイン表示：選択済みユーザー名 or プレースホルダー -->
         <Border x:Name="MainBorder"
                 Background="#2A2A3E"
                 BorderBrush="#334466"
                 BorderThickness="1"
-                CornerRadius="3">
+                CornerRadius="3"
+                Cursor="Hand"
+                MouseLeftButtonUp="MainBorder_MouseLeftButtonUp">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="24"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBox x:Name="SearchBox"
-                         Grid.Column="0"
-                         Background="Transparent"
-                         Foreground="#EAF6FF"
-                         BorderThickness="0"
-                         Padding="6,5"
-                         FontSize="12"
-                         CaretBrush="White"
-                         SelectionBrush="#2A3A5A"
-                         SelectionOpacity="1"
-                         VerticalContentAlignment="Center"
-                         TextChanged="SearchBox_TextChanged"
-                         GotKeyboardFocus="SearchBox_GotKeyboardFocus"
-                         PreviewKeyDown="SearchBox_PreviewKeyDown"/>
+                <!-- 選択済みユーザー名 -->
+                <TextBlock x:Name="SelectedLabel"
+                           Grid.Column="0"
+                           Foreground="#EAF6FF"
+                           FontSize="12"
+                           Padding="7,5"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           IsHitTestVisible="False"/>
 
-                <!-- フィルタ未入力時のプレースホルダー -->
-                <TextBlock Grid.Column="0"
-                           Text="ユーザーを検索..."
+                <!-- 未選択プレースホルダー -->
+                <TextBlock x:Name="PlaceholderLabel"
+                           Grid.Column="0"
+                           Text="（未選択）"
                            Foreground="#556677"
                            FontSize="12"
                            Padding="7,5"
                            VerticalAlignment="Center"
-                           IsHitTestVisible="False">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
+                           IsHitTestVisible="False"
+                           Visibility="Collapsed"/>
 
-                <!-- ドロップダウン矢印ボタン -->
-                <Button Grid.Column="1"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Focusable="False"
-                        Cursor="Hand"
-                        Click="ArrowBtn_Click">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border Background="Transparent">
-                                <Path Data="M0,0 L4,5 L8,0"
-                                      Stroke="#8899BB" StrokeThickness="1.5"
-                                      StrokeLineJoin="Round"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"/>
-                            </Border>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
+                <!-- 矢印 -->
+                <Path Grid.Column="1"
+                      x:Name="Arrow"
+                      Data="M0,0 L4,5 L8,0"
+                      Stroke="#8899BB" StrokeThickness="1.5"
+                      StrokeLineJoin="Round"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      IsHitTestVisible="False"/>
             </Grid>
         </Border>
 
@@ -85,8 +63,51 @@
                     BorderThickness="1"
                     CornerRadius="3"
                     MinWidth="{Binding ActualWidth, ElementName=MainBorder}"
-                    MaxHeight="220">
-                <Grid>
+                    MaxHeight="260">
+                <StackPanel>
+                    <!-- 検索ボックス（ポップアップ内） -->
+                    <Border BorderBrush="#334466" BorderThickness="0,0,0,1" Padding="6,5">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="🔍"
+                                       FontSize="11" Foreground="#556677"
+                                       VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="SearchBox"
+                                     Grid.Column="1"
+                                     Background="Transparent"
+                                     Foreground="#EAF6FF"
+                                     BorderThickness="0"
+                                     FontSize="12"
+                                     CaretBrush="White"
+                                     SelectionBrush="#2A3A5A"
+                                     SelectionOpacity="1"
+                                     VerticalContentAlignment="Center"
+                                     TextChanged="SearchBox_TextChanged"
+                                     PreviewKeyDown="SearchBox_PreviewKeyDown"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="検索..."
+                                       Foreground="#556677"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+
+                    <!-- 結果なし -->
                     <TextBlock x:Name="NoResultsText"
                                Text="（一致するユーザーなし）"
                                Foreground="#556677"
@@ -94,11 +115,14 @@
                                FontStyle="Italic"
                                Padding="8,6"
                                Visibility="Collapsed"/>
+
+                    <!-- ユーザーリスト -->
                     <ListBox x:Name="UserList"
                              Background="Transparent"
                              BorderThickness="0"
                              Foreground="#DDEEFF"
                              FontSize="12"
+                             MaxHeight="200"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                              KeyboardNavigation.DirectionalNavigation="Cycle"
@@ -134,8 +158,7 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
-                                    <TextBlock Text="{Binding DisplayName}"
-                                               FontSize="12"/>
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
                                     <TextBlock Text="{Binding UniqueName}"
                                                FontSize="10" Foreground="#7799BB"
                                                Margin="0,1,0,0"/>
@@ -143,7 +166,7 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                </Grid>
+                </StackPanel>
             </Border>
         </Popup>
     </Grid>

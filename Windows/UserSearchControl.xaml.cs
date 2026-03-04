@@ -12,9 +12,7 @@ namespace TaskAzure.Windows;
 public partial class UserSearchControl : UserControl
 {
     private readonly ObservableCollection<AdoUser> _filteredUsers = new();
-    private bool _suppressTextChanged;
 
-    // ─── 依存関係プロパティ ───────────────────────────────────────────────────
     public static readonly DependencyProperty UsersProperty =
         DependencyProperty.Register(nameof(Users), typeof(IList<AdoUser>), typeof(UserSearchControl),
             new PropertyMetadata(null, OnUsersChanged));
@@ -37,14 +35,12 @@ public partial class UserSearchControl : UserControl
         set => SetValue(SelectedUserProperty, value);
     }
 
-    // ─── 初期化 ────────────────────────────────────────────────────────────────
     public UserSearchControl()
     {
         InitializeComponent();
         UserList.ItemsSource = _filteredUsers;
     }
 
-    // ─── DP コールバック ───────────────────────────────────────────────────────
     private static void OnUsersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is UserSearchControl ctrl)
@@ -54,10 +50,25 @@ public partial class UserSearchControl : UserControl
     private static void OnSelectedUserChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is UserSearchControl ctrl)
-            ctrl.SyncTextToSelection();
+            ctrl.UpdateSelectedDisplay();
     }
 
-    // ─── フィルタ ──────────────────────────────────────────────────────────────
+    private void UpdateSelectedDisplay()
+    {
+        if (SelectedUser is { } user)
+        {
+            SelectedLabel.Text = user.DisplayName;
+            SelectedLabel.Visibility = Visibility.Visible;
+            PlaceholderLabel.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            SelectedLabel.Text = "";
+            SelectedLabel.Visibility = Visibility.Collapsed;
+            PlaceholderLabel.Visibility = Visibility.Visible;
+        }
+    }
+
     private void RefreshFilter()
     {
         var filter = SearchBox.Text?.Trim() ?? "";
@@ -78,31 +89,24 @@ public partial class UserSearchControl : UserControl
         UserList.Visibility = _filteredUsers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void SyncTextToSelection()
+    private void MainBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        _suppressTextChanged = true;
-        try { SearchBox.Text = SelectedUser?.DisplayName ?? ""; }
-        finally { _suppressTextChanged = false; }
-    }
-
-    // ─── テキストボックスイベント ─────────────────────────────────────────────
-    private void SearchBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        RefreshFilter();
-        DropdownPopup.IsOpen = true;
-        SearchBox.SelectAll();
+        if (DropdownPopup.IsOpen)
+        {
+            DropdownPopup.IsOpen = false;
+        }
+        else
+        {
+            SearchBox.Text = "";
+            RefreshFilter();
+            DropdownPopup.IsOpen = true;
+            SearchBox.Focus();
+        }
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (_suppressTextChanged) return;
         RefreshFilter();
-        if (!DropdownPopup.IsOpen && _filteredUsers.Count > 0)
-            DropdownPopup.IsOpen = true;
-        else if (DropdownPopup.IsOpen && _filteredUsers.Count == 0 && string.IsNullOrEmpty(SearchBox.Text?.Trim()))
-        {
-            // 空文字になったら全件表示でポップアップ維持
-        }
     }
 
     private void SearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -112,8 +116,6 @@ public partial class UserSearchControl : UserControl
             case Key.Down:
                 if (_filteredUsers.Count > 0)
                 {
-                    DropdownPopup.IsOpen = true;
-                    UserList.Focus();
                     UserList.SelectedIndex = 0;
                     if (UserList.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem item)
                         item.Focus();
@@ -127,32 +129,12 @@ public partial class UserSearchControl : UserControl
         }
     }
 
-    // ─── 矢印ボタン ───────────────────────────────────────────────────────────
-    private void ArrowBtn_Click(object sender, RoutedEventArgs e)
-    {
-        if (DropdownPopup.IsOpen)
-        {
-            DropdownPopup.IsOpen = false;
-        }
-        else
-        {
-            RefreshFilter();
-            DropdownPopup.IsOpen = true;
-            SearchBox.Focus();
-        }
-    }
-
-    // ─── リストボックスイベント ───────────────────────────────────────────────
     private void UserList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (UserList.SelectedItem is not AdoUser user) return;
 
         SelectedUser = user;
-        SyncTextToSelection();
         DropdownPopup.IsOpen = false;
-        // フォーカスをSearchBoxへ戻す
-        SearchBox.Focus();
-        SearchBox.SelectAll();
     }
 
     private void UserList_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -160,20 +142,13 @@ public partial class UserSearchControl : UserControl
         if (e.Key == Key.Escape)
         {
             DropdownPopup.IsOpen = false;
-            SearchBox.Focus();
             e.Handled = true;
-        }
-        else if (e.Key == Key.Enter && UserList.SelectedItem is AdoUser)
-        {
-            // SelectionChanged で処理済み
         }
     }
 
-    // ─── ポップアップ閉鎖 ─────────────────────────────────────────────────────
     private void DropdownPopup_Closed(object sender, EventArgs e)
     {
-        // 選択なしで閉じた場合、テキストを選択状態に戻す
-        SyncTextToSelection();
-        RefreshFilter();
+        SearchBox.Text = "";
+        UserList.SelectedItem = null;
     }
 }
