@@ -160,8 +160,6 @@
             <Setter Property="IsEditable" Value="True"/>
             <Setter Property="IsTextSearchEnabled" Value="False"/>
             <Setter Property="StaysOpenOnEdit" Value="True"/>
-            <Setter Property="Foreground" Value="#EAF6FF"/>
-            <Setter Property="Background" Value="#252B42"/>
         </Style>
         <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Background" Value="#0078D4"/>
