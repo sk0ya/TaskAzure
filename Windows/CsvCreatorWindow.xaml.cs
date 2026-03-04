@@ -133,9 +133,12 @@ public partial class CsvCreatorWindow : Window
     {
         if (!table.Columns.Contains(OutputEnabledColumnName))
         {
-            var col = table.Columns.Add(OutputEnabledColumnName, typeof(bool));
-            col.DefaultValue = true;
-            col.AllowDBNull = false;
+            var col = new DataColumn(OutputEnabledColumnName, typeof(bool))
+            {
+                DefaultValue = true,
+                AllowDBNull = false,
+            };
+            table.Columns.Add(col);
             col.SetOrdinal(0);
         }
 
