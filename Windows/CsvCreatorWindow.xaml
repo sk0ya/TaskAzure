@@ -51,9 +51,106 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="6,5"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="TextElement.Foreground" Value="#DDEEFF"/>
             <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItemStyle}"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="22"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 非編集モード: 選択中アイテム表示 -->
+                                    <ContentPresenter x:Name="ContentSite"
+                                        Grid.Column="0"
+                                        Content="{TemplateBinding SelectionBoxItem}"
+                                        ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                        ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                        Margin="{TemplateBinding Padding}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                        TextElement.Foreground="{TemplateBinding Foreground}"
+                                        IsHitTestVisible="False"/>
+
+                                    <!-- 編集モード: 入力TextBox -->
+                                    <TextBox x:Name="PART_EditableTextBox"
+                                        Grid.Column="0"
+                                        Visibility="Hidden"
+                                        IsReadOnly="{TemplateBinding IsReadOnly}"
+                                        Background="#252B42"
+                                        Foreground="#EAF6FF"
+                                        BorderThickness="0"
+                                        Padding="3,1,0,1"
+                                        CaretBrush="White"
+                                        SelectionBrush="#2A3A5A"
+                                        SelectionOpacity="1"
+                                        VerticalAlignment="Center"/>
+
+                                    <!-- ドロップダウン矢印 -->
+                                    <Path Grid.Column="1"
+                                          Data="M0,0 L4,5 L8,0"
+                                          Stroke="#8899BB" StrokeThickness="1.5" StrokeLineJoin="Round"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          IsHitTestVisible="False"/>
+
+                                    <!-- クリック領域 -->
+                                    <ToggleButton Grid.Column="0" Grid.ColumnSpan="2"
+                                        Background="Transparent" BorderThickness="0"
+                                        Focusable="False"
+                                        IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                            RelativeSource={RelativeSource TemplatedParent}}"
+                                        ClickMode="Press">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="{TemplateBinding Background}"/>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Background="#252535"
+                                        BorderBrush="#334466"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <ScrollViewer SnapsToDevicePixels="True"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <StackPanel IsItemsHost="True"
+                                                    KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEditable" Value="True">
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#4455AA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="UserVariableComboStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
             <Setter Property="IsEditable" Value="True"/>
@@ -151,18 +248,6 @@
                     <ComboBox.Style>
                         <Style TargetType="ComboBox" BasedOn="{StaticResource UserVariableComboStyle}">
                             <Setter Property="Visibility" Value="Collapsed"/>
-                            <Style.Resources>
-                                <Style x:Key="{x:Static ComboBox.TextBoxStyleKey}" TargetType="{x:Type TextBox}">
-                                    <Setter Property="Background" Value="#252B42"/>
-                                    <Setter Property="Foreground" Value="#EAF6FF"/>
-                                    <Setter Property="BorderThickness" Value="0"/>
-                                    <Setter Property="Padding" Value="3,1,20,1"/>
-                                    <Setter Property="CaretBrush" Value="#FFFFFF"/>
-                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                                    <Setter Property="SelectionBrush" Value="#2A3A5A"/>
-                                    <Setter Property="SelectionOpacity" Value="1"/>
-                                </Style>
-                            </Style.Resources>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Kind}" Value="{x:Static vm:VariableKind.User}">
                                     <Setter Property="Visibility" Value="Visible"/>
