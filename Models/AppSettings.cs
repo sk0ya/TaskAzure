@@ -10,4 +10,9 @@ public class AppSettings
     public double WindowLeft { get; set; } = 100;
     public double WindowTop { get; set; } = 100;
     public List<PrTarget> PrTargets { get; set; } = [];
+    /// <summary>
+    /// 子タスクCSV作成画面の前回値。
+    /// Key: Template.Id, Value: 変数キー(例 "0:user") -> 入力値
+    /// </summary>
+    public Dictionary<string, Dictionary<string, string>> CsvCreatorLastValues { get; set; } = new();
 }

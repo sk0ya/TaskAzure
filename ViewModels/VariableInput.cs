@@ -30,7 +30,12 @@ public class VariableInput : INotifyPropertyChanged
         set { _selectedUser = value; OnPropertyChanged(); ValueChanged?.Invoke(); }
     }
 
-    public IList<AdoUser> Users { get; set; } = [];
+    private IList<AdoUser> _users = [];
+    public IList<AdoUser> Users
+    {
+        get => _users;
+        set { _users = value; OnPropertyChanged(); }
+    }
 
     /// <summary>テンプレート解決時に使われる実値</summary>
     public string ResolvedValue => Kind switch

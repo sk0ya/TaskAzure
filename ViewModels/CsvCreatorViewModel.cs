@@ -13,8 +13,10 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
     private readonly AzureDevOpsService _adoService;
     private readonly WorkItemViewModel _parentItem;
     private readonly AppSettings _settings;
+    private readonly SettingsService _settingsService;
     private List<AdoUser> _allUsers = [];
     private CancellationTokenSource? _templateChangeCts;
+    private bool _suppressPreviewRefresh;
 
     public string ParentItemLabel => $"#{_parentItem.Id}: {_parentItem.Title}";
 
@@ -26,6 +28,8 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
         get => _selectedTemplate;
         set
         {
+            if (ReferenceEquals(_selectedTemplate, value)) return;
+            PersistCurrentTemplateValues();
             _selectedTemplate = value;
             OnPropertyChanged();
             _ = OnTemplateChangedAsync();
@@ -33,6 +37,7 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
     }
 
     public ObservableCollection<VariableInput> VariableInputs { get; } = [];
+    public bool HasUserVariables => VariableInputs.Any(v => v.Kind == VariableKind.User);
 
     private bool _isLoadingUsers;
     public bool IsLoadingUsers
@@ -48,15 +53,31 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
         private set { _statusMessage = value; OnPropertyChanged(); }
     }
 
+    private string _userFilterText = "";
+    public string UserFilterText
+    {
+        get => _userFilterText;
+        set
+        {
+            var next = value ?? "";
+            if (string.Equals(_userFilterText, next, StringComparison.Ordinal)) return;
+            _userFilterText = next;
+            OnPropertyChanged();
+            ApplyUserFilter();
+        }
+    }
+
     /// <summary>プレビューDataTableが更新された際に発火</summary>
     public event Action? PreviewRefreshRequested;
 
     public CsvCreatorViewModel(AzureDevOpsService adoService, WorkItemViewModel parentItem,
-                                AppSettings settings, TemplateService templateService)
+                                AppSettings settings, SettingsService settingsService,
+                                TemplateService templateService)
     {
         _adoService = adoService;
         _parentItem = parentItem;
         _settings = settings;
+        _settingsService = settingsService;
 
         foreach (var t in templateService.Load())
             Templates.Add(t);
@@ -74,6 +95,7 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
         foreach (var v in VariableInputs)
             v.ValueChanged -= OnVariableValueChanged;
         VariableInputs.Clear();
+        OnPropertyChanged(nameof(HasUserVariables));
         StatusMessage = "";
 
         if (_selectedTemplate == null)
@@ -138,16 +160,173 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
 
         foreach (var v in vars)
         {
-            if (v.Kind == VariableKind.User) v.Users = _allUsers;
             v.ValueChanged += OnVariableValueChanged;
             VariableInputs.Add(v);
         }
 
+        OnPropertyChanged(nameof(HasUserVariables));
+        ApplyUserFilter();
         StatusMessage = userFetchMessage;
         PreviewRefreshRequested?.Invoke();
     }
 
-    private void OnVariableValueChanged() => PreviewRefreshRequested?.Invoke();
+    public bool ApplyLastValues()
+    {
+        if (_selectedTemplate == null)
+            return false;
+
+        var saved = GetSavedValuesForTemplate(_selectedTemplate);
+        if (saved == null || saved.Count == 0)
+        {
+            StatusMessage = "前回値が見つかりません。";
+            return false;
+        }
+
+        var applied = false;
+        _suppressPreviewRefresh = true;
+        try
+        {
+            foreach (var input in VariableInputs)
+            {
+                if (!saved.TryGetValue(input.Key, out var savedValue))
+                    continue;
+
+                if (input.Kind == VariableKind.User)
+                {
+                    var user = _allUsers.FirstOrDefault(u =>
+                                   string.Equals(u.UniqueName, savedValue, StringComparison.OrdinalIgnoreCase))
+                               ?? _allUsers.FirstOrDefault(u =>
+                                   string.Equals(u.DisplayName, savedValue, StringComparison.OrdinalIgnoreCase));
+
+                    if (user == null && !string.IsNullOrWhiteSpace(savedValue))
+                    {
+                        user = new AdoUser
+                        {
+                            DisplayName = savedValue,
+                            UniqueName = savedValue,
+                        };
+                    }
+
+                    input.SelectedUser = user;
+                    if (user != null) applied = true;
+                    continue;
+                }
+
+                input.TextValue = savedValue;
+                applied = true;
+            }
+        }
+        finally
+        {
+            _suppressPreviewRefresh = false;
+        }
+
+        ApplyUserFilter();
+
+        if (!applied)
+        {
+            StatusMessage = "前回値は見つかりましたが、適用対象がありませんでした。";
+            return false;
+        }
+
+        StatusMessage = "前回値を設定しました。";
+        PreviewRefreshRequested?.Invoke();
+        return true;
+    }
+
+    public void SaveCurrentValuesAsLastUsed()
+    {
+        if (_selectedTemplate == null) return;
+        SaveValuesForTemplate(_selectedTemplate, VariableInputs);
+    }
+
+    private void PersistCurrentTemplateValues()
+    {
+        if (_selectedTemplate == null || VariableInputs.Count == 0) return;
+        SaveValuesForTemplate(_selectedTemplate, VariableInputs);
+    }
+
+    private void SaveValuesForTemplate(Template template, IReadOnlyCollection<VariableInput> inputs)
+    {
+        try
+        {
+            var latest = _settingsService.Load();
+            latest.CsvCreatorLastValues ??= new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+
+            var values = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var input in inputs)
+            {
+                var value = input.Kind == VariableKind.User
+                    ? input.SelectedUser?.UniqueName ?? ""
+                    : input.TextValue;
+
+                if (!string.IsNullOrWhiteSpace(value))
+                    values[input.Key] = value;
+            }
+
+            var storageKey = GetTemplateStorageKey(template);
+            if (values.Count == 0)
+                latest.CsvCreatorLastValues.Remove(storageKey);
+            else
+                latest.CsvCreatorLastValues[storageKey] = values;
+
+            _settings.CsvCreatorLastValues = latest.CsvCreatorLastValues;
+            _settingsService.Save(latest);
+        }
+        catch
+        {
+            // 前回値保存失敗はCSV作成自体を妨げない
+        }
+    }
+
+    private Dictionary<string, string>? GetSavedValuesForTemplate(Template template)
+    {
+        if (_settings.CsvCreatorLastValues == null)
+            return null;
+
+        return _settings.CsvCreatorLastValues.TryGetValue(GetTemplateStorageKey(template), out var values)
+            ? values
+            : null;
+    }
+
+    private static string GetTemplateStorageKey(Template template)
+        => string.IsNullOrWhiteSpace(template.Id) ? template.Name : template.Id;
+
+    private void ApplyUserFilter()
+    {
+        foreach (var input in VariableInputs)
+        {
+            if (input.Kind != VariableKind.User) continue;
+
+            var filtered = _allUsers
+                .Where(u => MatchesUserFilter(u, _userFilterText))
+                .ToList();
+
+            if (input.SelectedUser is { } selected &&
+                !filtered.Any(u => SameUser(u, selected)))
+            {
+                filtered.Insert(0, selected);
+            }
+
+            input.Users = filtered;
+        }
+    }
+
+    private static bool MatchesUserFilter(AdoUser user, string filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter)) return true;
+        return user.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || user.UniqueName.Contains(filter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool SameUser(AdoUser left, AdoUser right)
+        => string.Equals(left.UniqueName, right.UniqueName, StringComparison.OrdinalIgnoreCase);
+
+    private void OnVariableValueChanged()
+    {
+        if (_suppressPreviewRefresh) return;
+        PreviewRefreshRequested?.Invoke();
+    }
 
     /// <summary>テンプレートのCSVを変数解決してDataTableを返す</summary>
     public DataTable GeneratePreviewTable()

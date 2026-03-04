@@ -165,7 +165,7 @@ public partial class MainWindow : Window
     {
         if (GetVm(sender) is not { } vm) return;
         var settings = _app.SettingsSvc.Load();
-        var creatorVm = new CsvCreatorViewModel(_app.AdoService, vm, settings, _app.TemplateSvc);
+        var creatorVm = new CsvCreatorViewModel(_app.AdoService, vm, settings, _app.SettingsSvc, _app.TemplateSvc);
         var win = new CsvCreatorWindow(creatorVm) { Owner = this };
         win.ShowDialog();
     }
