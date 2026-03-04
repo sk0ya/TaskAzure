@@ -61,6 +61,10 @@
             <Setter Property="StaysOpenOnEdit" Value="True"/>
             <Setter Property="Foreground" Value="#EAF6FF"/>
             <Setter Property="Background" Value="#252B42"/>
+            <Style.Resources>
+                <Style x:Key="{x:Static ComboBox.TextBoxStyleKey}" TargetType="{x:Type TextBox}"
+                       BasedOn="{StaticResource AppDarkComboEditableTextBoxStyle}"/>
+            </Style.Resources>
         </Style>
         <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Background" Value="#0078D4"/>

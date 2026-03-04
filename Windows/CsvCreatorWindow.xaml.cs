@@ -7,15 +7,14 @@ using System.Windows.Data;
 using TaskAzure.Models;
 using TaskAzure.Services;
 using TaskAzure.ViewModels;
-using Brush = System.Windows.Media.Brush;
-using Brushes = System.Windows.Media.Brushes;
-using Color = System.Windows.Media.Color;
 using MessageBox = System.Windows.MessageBox;
 using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
-using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using WpfBinding = System.Windows.Data.Binding;
+using WpfCheckBox = System.Windows.Controls.CheckBox;
 using WpfComboBox = System.Windows.Controls.ComboBox;
+using WpfHorizontalAlignment = System.Windows.HorizontalAlignment;
 using WpfTextBox = System.Windows.Controls.TextBox;
+using WpfVerticalAlignment = System.Windows.VerticalAlignment;
 
 namespace TaskAzure.Windows;
 
@@ -23,9 +22,21 @@ public partial class CsvCreatorWindow : Window
 {
     private const string OutputEnabledColumnName = "__taskazure_output_enabled";
     private const string OutputEnabledHeader = "出力";
-    private static readonly Brush UserComboEditorBackground = new SolidColorBrush(Color.FromRgb(0x25, 0x2B, 0x42));
-    private static readonly Brush UserComboEditorForeground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF6, 0xFF));
-    private static readonly Brush UserComboSelectionBrush = new SolidColorBrush(Color.FromRgb(0x2A, 0x3A, 0x5A));
+
+    private static readonly DataTemplate OutputEnabledCellTemplate = CreateOutputEnabledCellTemplate();
+
+    private static DataTemplate CreateOutputEnabledCellTemplate()
+    {
+        var factory = new FrameworkElementFactory(typeof(WpfCheckBox));
+        factory.SetBinding(WpfCheckBox.IsCheckedProperty, new WpfBinding($"[{OutputEnabledColumnName}]")
+        {
+            Mode = BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+        });
+        factory.SetValue(WpfCheckBox.HorizontalAlignmentProperty, WpfHorizontalAlignment.Center);
+        factory.SetValue(WpfCheckBox.VerticalAlignmentProperty, WpfVerticalAlignment.Center);
+        return new DataTemplate { VisualTree = factory };
+    }
 
     private readonly CsvCreatorViewModel _vm;
     private DataTable _previewTable = new();
@@ -53,15 +64,12 @@ public partial class CsvCreatorWindow : Window
     {
         if (string.Equals(e.PropertyName, OutputEnabledColumnName, StringComparison.Ordinal))
         {
-            e.Column = new DataGridCheckBoxColumn
+            e.Column = new DataGridTemplateColumn
             {
                 Header = OutputEnabledHeader,
-                Binding = new WpfBinding($"[{OutputEnabledColumnName}]")
-                {
-                    Mode = BindingMode.TwoWay,
-                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
-                },
+                CellTemplate = OutputEnabledCellTemplate,
                 Width = new DataGridLength(56),
+                SortMemberPath = OutputEnabledColumnName,
             };
             return;
         }
@@ -136,7 +144,6 @@ public partial class CsvCreatorWindow : Window
     private void UserComboBox_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is not WpfComboBox combo) return;
-        ApplyUserComboEditorStyle(combo);
         combo.RemoveHandler(WpfTextBox.TextChangedEvent, new TextChangedEventHandler(UserComboBox_FilterTextChanged));
         combo.AddHandler(WpfTextBox.TextChangedEvent, new TextChangedEventHandler(UserComboBox_FilterTextChanged));
     }
@@ -206,22 +213,6 @@ public partial class CsvCreatorWindow : Window
         }
 
         combo.Text = combo.SelectedItem is AdoUser user ? user.DisplayName : "";
-    }
-
-    private static void ApplyUserComboEditorStyle(WpfComboBox combo)
-    {
-        combo.ApplyTemplate();
-        if (combo.Template.FindName("PART_EditableTextBox", combo) is not WpfTextBox editor)
-            return;
-
-        editor.Background = UserComboEditorBackground;
-        editor.Foreground = UserComboEditorForeground;
-        editor.CaretBrush = Brushes.White;
-        editor.BorderThickness = new Thickness(0);
-        editor.Padding = new Thickness(3, 1, 20, 1);
-        editor.VerticalContentAlignment = VerticalAlignment.Center;
-        editor.SelectionBrush = UserComboSelectionBrush;
-        editor.SelectionOpacity = 1;
     }
 
     private static void EnsureOutputSelectionColumn(DataTable table)
