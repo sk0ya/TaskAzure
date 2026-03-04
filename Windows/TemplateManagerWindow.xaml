@@ -108,6 +108,7 @@
             <Setter Property="RowBackground" Value="#1A1A2E"/>
             <Setter Property="AlternatingRowBackground" Value="#1E2235"/>
             <Setter Property="ColumnHeaderHeight" Value="28"/>
+            <Setter Property="RowHeaderWidth" Value="44"/>
         </Style>
         <Style TargetType="DataGridColumnHeader">
             <Setter Property="Background" Value="#252540"/>
@@ -116,6 +117,33 @@
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="BorderBrush" Value="#334466"/>
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="ContextMenu">
+                <Setter.Value>
+                    <ContextMenu>
+                        <MenuItem Header="左に列を挿入" Click="InsertColumnLeft_Click"/>
+                        <MenuItem Header="右に列を挿入" Click="InsertColumnRight_Click"/>
+                        <Separator/>
+                        <MenuItem Header="この列を削除" Click="DeleteColumnFromHeader_Click"/>
+                    </ContextMenu>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="DataGridRowHeader">
+            <Setter Property="Background" Value="#252540"/>
+            <Setter Property="Foreground" Value="#99BBDD"/>
+            <Setter Property="BorderBrush" Value="#334466"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="ContextMenu">
+                <Setter.Value>
+                    <ContextMenu>
+                        <MenuItem Header="上に行を挿入" Click="InsertRowAbove_Click"/>
+                        <MenuItem Header="下に行を挿入" Click="InsertRowBelow_Click"/>
+                        <Separator/>
+                        <MenuItem Header="この行を削除" Click="DeleteRowFromHeader_Click"/>
+                    </ContextMenu>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style TargetType="DataGridCell">
             <Setter Property="Background" Value="Transparent"/>
@@ -209,33 +237,21 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- DataGrid ツールバー -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
-                    <TextBlock Text="CSVエディター  " VerticalAlignment="Center"
-                               Foreground="#99BBDD" FontSize="11"/>
-                    <Button Content="+ 行" Style="{StaticResource SecondaryBtn}"
-                            Padding="8,4" FontSize="11" Margin="0,0,4,0"
-                            Click="AddRow_Click"/>
-                    <Button Content="- 行" Style="{StaticResource DangerBtn}"
-                            Padding="8,4" Margin="0,0,4,0"
-                            Click="DeleteRow_Click"/>
-                    <Button Content="+ 列" Style="{StaticResource SecondaryBtn}"
-                            Padding="8,4" FontSize="11" Margin="0,0,4,0"
-                            Click="AddColumn_Click"/>
-                    <Button Content="- 列" Style="{StaticResource DangerBtn}"
-                            Padding="8,4"
-                            Click="DeleteColumn_Click"/>
-                </StackPanel>
+                <TextBlock Grid.Row="0" Text="CSVセルエディター（行/列ヘッダーを右クリックで操作）"
+                           Foreground="#99BBDD" FontSize="11" Margin="0,0,0,6"/>
 
                 <DataGrid Grid.Row="1" x:Name="CsvGrid"
-                          AutoGenerateColumns="True"
+                          AutoGenerateColumns="False"
                           CanUserAddRows="False"
                           CanUserDeleteRows="False"
                           CanUserReorderColumns="False"
                           CanUserResizeRows="False"
+                          CanUserResizeColumns="True"
                           SelectionUnit="Cell"
-                          HeadersVisibility="Column"
-                          AutoGeneratingColumn="CsvGrid_AutoGeneratingColumn"/>
+                          HeadersVisibility="All"
+                          LoadingRow="CsvGrid_LoadingRow"
+                          CellEditEnding="CsvGrid_CellEditEnding"
+                          PreviewKeyDown="CsvGrid_PreviewKeyDown"/>
             </Grid>
 
             <!-- 変数ヘルプ -->
@@ -259,9 +275,7 @@
             <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right"
                         Margin="0,10,0,0">
                 <Button Content="閉じる" Style="{StaticResource SecondaryBtn}"
-                        Margin="0,0,8,0" Click="Close_Click"/>
-                <Button Content="保存" Style="{StaticResource PrimaryBtn}"
-                        Click="Save_Click"/>
+                        Click="Close_Click"/>
             </StackPanel>
         </Grid>
     </Grid>

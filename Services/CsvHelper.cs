@@ -15,8 +15,12 @@ public static class CsvHelper
         if (lines.Count == 0) return dt;
 
         var headers = ParseCsvLine(lines[0]);
-        foreach (var h in headers)
-            dt.Columns.Add(h.Trim(), typeof(string));
+        var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var name = CreateUniqueHeaderName(headers[i], i, usedNames);
+            dt.Columns.Add(name, typeof(string));
+        }
 
         for (int i = 1; i < lines.Count; i++)
         {
@@ -106,5 +110,20 @@ public static class CsvHelper
         }
         if (sb.Length > 0) lines.Add(sb.ToString());
         return lines;
+    }
+
+    private static string CreateUniqueHeaderName(string rawHeader, int index, HashSet<string> usedNames)
+    {
+        var baseName = string.IsNullOrWhiteSpace(rawHeader)
+            ? $"Column{index + 1}"
+            : rawHeader.Trim();
+
+        var candidate = baseName;
+        var suffix = 2;
+        while (usedNames.Contains(candidate))
+            candidate = $"{baseName}_{suffix++}";
+
+        usedNames.Add(candidate);
+        return candidate;
     }
 }

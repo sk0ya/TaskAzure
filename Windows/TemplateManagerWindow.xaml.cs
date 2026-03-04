@@ -1,6 +1,11 @@
 using System.Data;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Threading;
+using TaskAzure.Models;
 using TaskAzure.Services;
 using TaskAzure.ViewModels;
 using MessageBox = System.Windows.MessageBox;
@@ -9,50 +14,66 @@ namespace TaskAzure.Windows;
 
 public partial class TemplateManagerWindow : Window
 {
+    private const int BaseGridRows = 15;
+    private const int BaseGridColumns = 15;
+    private const int AutoSaveDelayMs = 400;
+
     private readonly TemplateManagerViewModel _vm;
+    private readonly DispatcherTimer _autoSaveTimer;
+    private Template? _editingTemplate;
     private DataTable _dataTable = new();
     private bool _updatingGrid;
+    private int _nextColumnId = 1;
 
     public TemplateManagerWindow(TemplateManagerViewModel vm)
     {
         InitializeComponent();
         _vm = vm;
         DataContext = vm;
+        _autoSaveTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(AutoSaveDelayMs),
+        };
+        _autoSaveTimer.Tick += AutoSaveTimer_Tick;
 
         vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(vm.SelectedTemplate))
+            {
+                FlushPendingAutoSave();
                 LoadSelectedTemplate();
+            }
         };
 
+        TemplateNameBox.TextChanged += TemplateNameBox_TextChanged;
         LoadSelectedTemplate();
     }
-
-    // ─── DataTable <-> Template.CsvContent ───────────────────────────
 
     private void LoadSelectedTemplate()
     {
         _updatingGrid = true;
         try
         {
+            DetachTableEvents();
             CsvGrid.ItemsSource = null;
             CsvGrid.Columns.Clear();
+            _editingTemplate = _vm.SelectedTemplate;
+            _nextColumnId = 1;
 
-            if (_vm.SelectedTemplate == null)
+            if (_editingTemplate == null)
             {
-                _dataTable = new DataTable();
+                _dataTable = CreateEditorTable(BaseGridColumns, BaseGridRows);
+                ConfigureGridColumns();
+                CsvGrid.ItemsSource = _dataTable.DefaultView;
+                AttachTableEvents();
                 return;
             }
 
-            _dataTable = CsvHelper.ParseToDataTable(_vm.SelectedTemplate.CsvContent);
-            if (_dataTable.Columns.Count == 0)
-            {
-                _dataTable.Columns.Add("Title", typeof(string));
-                _dataTable.Columns.Add("WorkItemType", typeof(string));
-                _dataTable.Columns.Add("AssignedTo", typeof(string));
-            }
-
+            var parsed = CsvHelper.ParseToDataTable(_editingTemplate.CsvContent);
+            _dataTable = BuildEditorTable(parsed);
+            ConfigureGridColumns();
             CsvGrid.ItemsSource = _dataTable.DefaultView;
+            AttachTableEvents();
         }
         finally
         {
@@ -60,121 +81,426 @@ public partial class TemplateManagerWindow : Window
         }
     }
 
-    private void CommitGridToTemplate()
+    private DataTable BuildEditorTable(DataTable parsed)
     {
-        if (_vm.SelectedTemplate == null || _updatingGrid) return;
-        // Accept any pending edits
-        CsvGrid.CommitEdit(DataGridEditingUnit.Row, true);
-        _vm.SelectedTemplate.CsvContent = CsvHelper.SerializeFromDataTable(_dataTable);
+        var usedColumnCount = parsed.Columns.Count;
+        var usedRowCount = usedColumnCount == 0 && parsed.Rows.Count == 0 ? 0 : parsed.Rows.Count + 1;
+
+        var columnCount = Math.Max(BaseGridColumns, usedColumnCount);
+        var rowCount = Math.Max(BaseGridRows, usedRowCount);
+
+        var editorTable = CreateEditorTable(columnCount, rowCount);
+
+        if (usedColumnCount > 0)
+        {
+            for (int c = 0; c < usedColumnCount; c++)
+                editorTable.Rows[0][c] = parsed.Columns[c].ColumnName;
+
+            for (int r = 0; r < parsed.Rows.Count; r++)
+            {
+                for (int c = 0; c < usedColumnCount; c++)
+                    editorTable.Rows[r + 1][c] = parsed.Rows[r][c]?.ToString() ?? "";
+            }
+        }
+
+        _nextColumnId = editorTable.Columns.Count + 1;
+        return editorTable;
     }
 
-    private void CsvGrid_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
-        => DataGridHelper.ApplyDefaultColumnStyle(sender, e);
-
-    // ─── 行操作 ─────────────────────────────────────────────────────
-
-    private void AddRow_Click(object sender, RoutedEventArgs e)
+    private DataTable CreateEditorTable(int columnCount, int rowCount)
     {
-        if (_vm.SelectedTemplate == null) return;
+        var table = new DataTable();
+        for (int c = 0; c < columnCount; c++)
+            table.Columns.Add(CreateInternalColumnName(), typeof(string));
+
+        for (int r = 0; r < rowCount; r++)
+        {
+            var row = table.NewRow();
+            for (int c = 0; c < columnCount; c++) row[c] = "";
+            table.Rows.Add(row);
+        }
+
+        return table;
+    }
+
+    private string CreateInternalColumnName() => $"C{_nextColumnId++}";
+
+    private void ConfigureGridColumns()
+    {
+        CsvGrid.Columns.Clear();
+
+        for (int i = 0; i < _dataTable.Columns.Count; i++)
+        {
+            var columnName = _dataTable.Columns[i].ColumnName;
+            var column = new DataGridTextColumn
+            {
+                Header = ToExcelColumnName(i),
+                Binding = new System.Windows.Data.Binding($"[{columnName}]")
+                {
+                    Mode = System.Windows.Data.BindingMode.TwoWay,
+                    UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.LostFocus,
+                },
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                MinWidth = 90,
+            };
+            CsvGrid.Columns.Add(column);
+        }
+    }
+
+    private static string ToExcelColumnName(int zeroBasedIndex)
+    {
+        var n = zeroBasedIndex + 1;
+        var name = "";
+        while (n > 0)
+        {
+            n--;
+            name = (char)('A' + (n % 26)) + name;
+            n /= 26;
+        }
+        return name;
+    }
+
+    private void AttachTableEvents() => _dataTable.ColumnChanged += DataTable_ColumnChanged;
+
+    private void DetachTableEvents() => _dataTable.ColumnChanged -= DataTable_ColumnChanged;
+
+    private void DataTable_ColumnChanged(object? sender, DataColumnChangeEventArgs e)
+    {
+        if (_updatingGrid) return;
+        ScheduleAutoSave();
+    }
+
+    private void TemplateNameBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_updatingGrid || _editingTemplate == null) return;
+        ScheduleAutoSave();
+    }
+
+    private void ScheduleAutoSave()
+    {
+        if (_editingTemplate == null || _updatingGrid) return;
+        _autoSaveTimer.Stop();
+        _autoSaveTimer.Start();
+    }
+
+    private void AutoSaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _autoSaveTimer.Stop();
+        SaveCurrentTemplate();
+    }
+
+    private void FlushPendingAutoSave()
+    {
+        _autoSaveTimer.Stop();
+        SaveCurrentTemplate();
+    }
+
+    private void SaveCurrentTemplate()
+    {
+        if (_editingTemplate == null || _updatingGrid) return;
+
+        CommitGridEdits();
+        _editingTemplate.CsvContent = SerializeEditorTableToCsv();
+        _vm.Save();
+    }
+
+    private void CommitGridEdits()
+    {
+        CsvGrid.CommitEdit(DataGridEditingUnit.Cell, true);
         CsvGrid.CommitEdit(DataGridEditingUnit.Row, true);
+    }
+
+    private string SerializeEditorTableToCsv()
+    {
+        if (_dataTable.Columns.Count == 0 || _dataTable.Rows.Count == 0) return "";
+
+        var (lastUsedRow, lastUsedCol) = FindLastUsedRange();
+        if (lastUsedRow < 0 || lastUsedCol < 0) return "";
+
+        var sb = new StringBuilder();
+        for (int r = 0; r <= lastUsedRow; r++)
+        {
+            var values = new string[lastUsedCol + 1];
+            for (int c = 0; c <= lastUsedCol; c++)
+                values[c] = CsvHelper.QuoteCsv(GetCellText(r, c));
+
+            sb.Append(string.Join(",", values));
+            if (r < lastUsedRow) sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    private (int lastUsedRow, int lastUsedCol) FindLastUsedRange()
+    {
+        var lastRow = -1;
+        var lastCol = -1;
+
+        for (int r = 0; r < _dataTable.Rows.Count; r++)
+        {
+            for (int c = 0; c < _dataTable.Columns.Count; c++)
+            {
+                if (string.IsNullOrWhiteSpace(GetCellText(r, c))) continue;
+                if (r > lastRow) lastRow = r;
+                if (c > lastCol) lastCol = c;
+            }
+        }
+
+        return (lastRow, lastCol);
+    }
+
+    private string GetCellText(int rowIndex, int colIndex)
+    {
+        var value = _dataTable.Rows[rowIndex][colIndex];
+        if (value == DBNull.Value) return "";
+        return value?.ToString() ?? "";
+    }
+
+    private void CsvGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+        => e.Row.Header = (e.Row.GetIndex() + 1).ToString();
+
+    private void CsvGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (_updatingGrid) return;
+        Dispatcher.BeginInvoke(ScheduleAutoSave, DispatcherPriority.Background);
+    }
+
+    private void CsvGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != Key.V || (Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+        PasteClipboard();
+        e.Handled = true;
+    }
+
+    private void PasteClipboard()
+    {
+        if (_editingTemplate == null) return;
+
+        var text = System.Windows.Clipboard.GetText();
+        if (string.IsNullOrEmpty(text)) return;
+
+        var clipboardRows = ParseClipboardRows(text);
+        if (clipboardRows.Count == 0) return;
+
+        CommitGridEdits();
+        var startRow = GetCurrentRowIndex();
+        var startCol = CsvGrid.CurrentCell.Column?.DisplayIndex ?? 0;
+        if (startRow < 0) startRow = 0;
+        if (startCol < 0) startCol = 0;
+
+        var requiredRows = startRow + clipboardRows.Count;
+        var requiredCols = startCol + clipboardRows.Max(r => r.Count);
+        EnsureGridCapacity(requiredRows, requiredCols);
+
+        _updatingGrid = true;
+        try
+        {
+            for (int r = 0; r < clipboardRows.Count; r++)
+            {
+                var row = clipboardRows[r];
+                for (int c = 0; c < row.Count; c++)
+                    _dataTable.Rows[startRow + r][startCol + c] = row[c];
+            }
+        }
+        finally
+        {
+            _updatingGrid = false;
+        }
+
+        ScheduleAutoSave();
+    }
+
+    private static List<List<string>> ParseClipboardRows(string text)
+    {
+        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n').ToList();
+        if (lines.Count > 0 && lines[^1].Length == 0)
+            lines.RemoveAt(lines.Count - 1);
+
+        var rows = new List<List<string>>(lines.Count);
+        foreach (var line in lines)
+            rows.Add(line.Split('\t').ToList());
+
+        return rows;
+    }
+
+    private int GetCurrentRowIndex()
+    {
+        if (CsvGrid.CurrentItem is DataRowView currentView)
+            return _dataTable.Rows.IndexOf(currentView.Row);
+
+        if (CsvGrid.SelectedCells.Count > 0 &&
+            CsvGrid.SelectedCells[0].Item is DataRowView selectedView)
+            return _dataTable.Rows.IndexOf(selectedView.Row);
+
+        return 0;
+    }
+
+    private void EnsureGridCapacity(int requiredRows, int requiredCols)
+    {
+        if (requiredCols > _dataTable.Columns.Count)
+        {
+            for (int c = _dataTable.Columns.Count; c < requiredCols; c++)
+            {
+                var column = new DataColumn(CreateInternalColumnName(), typeof(string)) { DefaultValue = "" };
+                _dataTable.Columns.Add(column);
+            }
+            ConfigureGridColumns();
+        }
+
+        while (_dataTable.Rows.Count < requiredRows)
+        {
+            var row = _dataTable.NewRow();
+            for (int c = 0; c < _dataTable.Columns.Count; c++) row[c] = "";
+            _dataTable.Rows.Add(row);
+        }
+    }
+
+    private void InsertRowAbove_Click(object sender, RoutedEventArgs e)
+    {
+        var rowIndex = GetRowIndexFromContext(sender);
+        if (rowIndex is null) return;
+        InsertRowAt(rowIndex.Value);
+    }
+
+    private void InsertRowBelow_Click(object sender, RoutedEventArgs e)
+    {
+        var rowIndex = GetRowIndexFromContext(sender);
+        if (rowIndex is null) return;
+        InsertRowAt(rowIndex.Value + 1);
+    }
+
+    private void DeleteRowFromHeader_Click(object sender, RoutedEventArgs e)
+    {
+        var rowIndex = GetRowIndexFromContext(sender);
+        if (rowIndex is null) return;
+        DeleteRowAt(rowIndex.Value);
+    }
+
+    private int? GetRowIndexFromContext(object sender)
+    {
+        if (sender is not MenuItem item ||
+            item.Parent is not ContextMenu menu ||
+            menu.PlacementTarget is not DataGridRowHeader rowHeader)
+            return null;
+
+        if (rowHeader.DataContext is DataRowView rowView)
+            return _dataTable.Rows.IndexOf(rowView.Row);
+
+        return null;
+    }
+
+    private void InsertRowAt(int rowIndex)
+    {
+        if (_editingTemplate == null) return;
+
+        CommitGridEdits();
         var row = _dataTable.NewRow();
-        foreach (DataColumn col in _dataTable.Columns) row[col] = "";
-        _dataTable.Rows.Add(row);
+        for (int c = 0; c < _dataTable.Columns.Count; c++) row[c] = "";
+
+        rowIndex = Math.Clamp(rowIndex, 0, _dataTable.Rows.Count);
+        _dataTable.Rows.InsertAt(row, rowIndex);
+        CsvGrid.Items.Refresh();
+        ScheduleAutoSave();
     }
 
-    private void DeleteRow_Click(object sender, RoutedEventArgs e)
+    private void DeleteRowAt(int rowIndex)
     {
-        if (_vm.SelectedTemplate == null) return;
-        CsvGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        if (_editingTemplate == null) return;
 
-        var selected = CsvGrid.SelectedItems.Cast<DataRowView>().ToList();
-        if (selected.Count == 0 && _dataTable.Rows.Count > 0)
+        if (_dataTable.Rows.Count <= BaseGridRows)
         {
-            // 選択なし → 最終行を削除
-            _dataTable.Rows[_dataTable.Rows.Count - 1].Delete();
-        }
-        else
-        {
-            foreach (var rv in selected)
-                rv.Row.Delete();
-        }
-        _dataTable.AcceptChanges();
-    }
-
-    // ─── 列操作 ─────────────────────────────────────────────────────
-
-    private void AddColumn_Click(object sender, RoutedEventArgs e)
-    {
-        if (_vm.SelectedTemplate == null) return;
-        var name = InputDialog.Show(this, "追加する列名を入力してください:", "列を追加", "NewColumn");
-        if (string.IsNullOrWhiteSpace(name)) return;
-
-        // 重複チェック
-        if (_dataTable.Columns.Contains(name))
-        {
-            MessageBox.Show($"列 '{name}' は既に存在します。", "TaskAzure",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        CsvGrid.CommitEdit(DataGridEditingUnit.Row, true);
-        _dataTable.Columns.Add(new DataColumn(name, typeof(string)) { DefaultValue = "" });
-
-        RefreshGrid();
-    }
-
-    private void DeleteColumn_Click(object sender, RoutedEventArgs e)
-    {
-        if (_vm.SelectedTemplate == null || _dataTable.Columns.Count == 0) return;
-
-        var colNames = _dataTable.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToArray();
-        var selected = CsvGrid.CurrentColumn?.Header?.ToString();
-
-        // 選択中の列がない場合、最後の列を選択
-        if (string.IsNullOrEmpty(selected))
-        {
-            MessageBox.Show("削除する列のセルを選択してください。", "TaskAzure",
+            MessageBox.Show($"行数は最低 {BaseGridRows} 行です。", "TaskAzure",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        if (MessageBox.Show($"列 '{selected}' を削除しますか？", "列の削除",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (rowIndex < 0 || rowIndex >= _dataTable.Rows.Count) return;
 
-        CsvGrid.CommitEdit(DataGridEditingUnit.Row, true);
-        _dataTable.Columns.Remove(selected);
-        RefreshGrid();
+        CommitGridEdits();
+        _dataTable.Rows.RemoveAt(rowIndex);
+        CsvGrid.Items.Refresh();
+        ScheduleAutoSave();
     }
 
-    private void RefreshGrid()
+    private void InsertColumnLeft_Click(object sender, RoutedEventArgs e)
     {
-        _updatingGrid = true;
-        try
-        {
-            CsvGrid.ItemsSource = null;
-            CsvGrid.Columns.Clear();
-            CsvGrid.ItemsSource = _dataTable.DefaultView;
-        }
-        finally
-        {
-            _updatingGrid = false;
-        }
+        var colIndex = GetColumnIndexFromContext(sender);
+        if (colIndex is null) return;
+        InsertColumnAt(colIndex.Value);
     }
 
-    // ─── ボタン ─────────────────────────────────────────────────────
-
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private void InsertColumnRight_Click(object sender, RoutedEventArgs e)
     {
-        CommitGridToTemplate();
-        _vm.Save();
-        MessageBox.Show("保存しました。", "TaskAzure", MessageBoxButton.OK, MessageBoxImage.Information);
+        var colIndex = GetColumnIndexFromContext(sender);
+        if (colIndex is null) return;
+        InsertColumnAt(colIndex.Value + 1);
+    }
+
+    private void DeleteColumnFromHeader_Click(object sender, RoutedEventArgs e)
+    {
+        var colIndex = GetColumnIndexFromContext(sender);
+        if (colIndex is null) return;
+        DeleteColumnAt(colIndex.Value);
+    }
+
+    private int? GetColumnIndexFromContext(object sender)
+    {
+        if (sender is not MenuItem item ||
+            item.Parent is not ContextMenu menu ||
+            menu.PlacementTarget is not DataGridColumnHeader colHeader ||
+            colHeader.Column == null)
+            return null;
+
+        return colHeader.Column.DisplayIndex;
+    }
+
+    private void InsertColumnAt(int colIndex)
+    {
+        if (_editingTemplate == null) return;
+
+        CommitGridEdits();
+        colIndex = Math.Clamp(colIndex, 0, _dataTable.Columns.Count);
+
+        var column = new DataColumn(CreateInternalColumnName(), typeof(string)) { DefaultValue = "" };
+        _dataTable.Columns.Add(column);
+        column.SetOrdinal(colIndex);
+
+        foreach (DataRow row in _dataTable.Rows)
+        {
+            if (row.IsNull(column))
+                row[column] = "";
+        }
+
+        ConfigureGridColumns();
+        CsvGrid.Items.Refresh();
+        ScheduleAutoSave();
+    }
+
+    private void DeleteColumnAt(int colIndex)
+    {
+        if (_editingTemplate == null) return;
+
+        if (_dataTable.Columns.Count <= BaseGridColumns)
+        {
+            MessageBox.Show($"列数は最低 {BaseGridColumns} 列です。", "TaskAzure",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (colIndex < 0 || colIndex >= _dataTable.Columns.Count) return;
+
+        CommitGridEdits();
+        _dataTable.Columns.RemoveAt(colIndex);
+        ConfigureGridColumns();
+        CsvGrid.Items.Refresh();
+        ScheduleAutoSave();
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        CommitGridToTemplate();
+        FlushPendingAutoSave();
         base.OnClosing(e);
     }
 }
