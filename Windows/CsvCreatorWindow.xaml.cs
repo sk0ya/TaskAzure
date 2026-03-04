@@ -4,11 +4,14 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using TaskAzure.Models;
 using TaskAzure.Services;
 using TaskAzure.ViewModels;
 using MessageBox = System.Windows.MessageBox;
 using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 using WpfBinding = System.Windows.Data.Binding;
+using WpfComboBox = System.Windows.Controls.ComboBox;
+using WpfTextBox = System.Windows.Controls.TextBox;
 
 namespace TaskAzure.Windows;
 
@@ -66,9 +69,6 @@ public partial class CsvCreatorWindow : Window
         RefreshPreview();
     }
 
-    private void ClearUserFilter_Click(object sender, RoutedEventArgs e)
-        => _vm.UserFilterText = "";
-
     private void Create_Click(object sender, RoutedEventArgs e)
     {
         // DataGrid の編集をコミット
@@ -102,9 +102,6 @@ public partial class CsvCreatorWindow : Window
             return;
         }
 
-        MessageBox.Show($"保存しました:\n{dlg.FileName}", "TaskAzure",
-            MessageBoxButton.OK, MessageBoxImage.Information);
-
         // Azure DevOps の Queries ページを開く
         try
         {
@@ -127,6 +124,59 @@ public partial class CsvCreatorWindow : Window
     {
         _vm.PreviewRefreshRequested -= RefreshPreview;
         base.OnClosed(e);
+    }
+
+    private void UserComboBox_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not WpfComboBox combo) return;
+        combo.RemoveHandler(WpfTextBox.TextChangedEvent, new TextChangedEventHandler(UserComboBox_FilterTextChanged));
+        combo.AddHandler(WpfTextBox.TextChangedEvent, new TextChangedEventHandler(UserComboBox_FilterTextChanged));
+    }
+
+    private void UserComboBox_DropDownClosed(object sender, EventArgs e)
+    {
+        if (sender is not WpfComboBox combo) return;
+        ResetComboFilter(combo);
+    }
+
+    private void UserComboBox_FilterTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not WpfComboBox combo) return;
+        if (!combo.IsEditable) return;
+        if (!combo.IsKeyboardFocusWithin && !combo.IsDropDownOpen) return;
+
+        var view = CollectionViewSource.GetDefaultView(combo.ItemsSource);
+        if (view == null) return;
+
+        var filterText = combo.Text?.Trim() ?? "";
+        if (string.IsNullOrEmpty(filterText))
+        {
+            view.Filter = null;
+            view.Refresh();
+            return;
+        }
+
+        view.Filter = item =>
+            item is AdoUser user &&
+            (user.DisplayName.Contains(filterText, StringComparison.OrdinalIgnoreCase)
+             || user.UniqueName.Contains(filterText, StringComparison.OrdinalIgnoreCase));
+
+        view.Refresh();
+
+        if (!combo.IsDropDownOpen)
+            combo.IsDropDownOpen = true;
+    }
+
+    private static void ResetComboFilter(WpfComboBox combo)
+    {
+        var view = CollectionViewSource.GetDefaultView(combo.ItemsSource);
+        if (view != null)
+        {
+            view.Filter = null;
+            view.Refresh();
+        }
+
+        combo.Text = combo.SelectedItem is AdoUser user ? user.DisplayName : "";
     }
 
     private static void EnsureOutputSelectionColumn(DataTable table)

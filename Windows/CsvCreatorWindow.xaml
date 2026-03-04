@@ -54,6 +54,13 @@
             <Setter Property="TextElement.Foreground" Value="#DDEEFF"/>
             <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItemStyle}"/>
         </Style>
+        <Style x:Key="UserVariableComboStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="IsEditable" Value="True"/>
+            <Setter Property="IsTextSearchEnabled" Value="False"/>
+            <Setter Property="StaysOpenOnEdit" Value="True"/>
+            <Setter Property="Foreground" Value="#EAF6FF"/>
+            <Setter Property="Background" Value="#252B42"/>
+        </Style>
         <Style TargetType="ComboBoxItem" BasedOn="{StaticResource DarkComboBoxItemStyle}">
         </Style>
         <Style x:Key="PrimaryBtn" TargetType="Button">
@@ -138,14 +145,12 @@
                 <!-- ユーザー選択 -->
                 <ComboBox Grid.Column="1"
                           ItemsSource="{Binding Users}"
-                          SelectedItem="{Binding SelectedUser}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding DisplayName}" Foreground="#DDEEFF"/>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
+                          SelectedItem="{Binding SelectedUser}"
+                          DisplayMemberPath="DisplayName"
+                          Loaded="UserComboBox_Loaded"
+                          DropDownClosed="UserComboBox_DropDownClosed">
                     <ComboBox.Style>
-                        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                        <Style TargetType="ComboBox" BasedOn="{StaticResource UserVariableComboStyle}">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Kind}" Value="{x:Static vm:VariableKind.User}">
@@ -244,35 +249,6 @@
                             Style="{StaticResource SecondaryBtn}"
                             Padding="10,4" FontSize="11"
                             Click="RefreshPreview_Click"/>
-                </Grid>
-
-                <!-- ユーザーフィルター -->
-                <Grid Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="110"/>
-                        <ColumnDefinition Width="260"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.Style>
-                        <Style TargetType="Grid">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding HasUserVariables}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Grid.Style>
-                    <TextBlock Grid.Column="0" Text="ユーザー絞り込み:"
-                               Style="{StaticResource LabelStyle}" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1"
-                             Text="{Binding UserFilterText, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,8,0"/>
-                    <Button Grid.Column="2" Content="クリア"
-                            Style="{StaticResource SecondaryBtn}"
-                            Padding="10,4" FontSize="11"
-                            Click="ClearUserFilter_Click"/>
                 </Grid>
 
                 <!-- ローディング -->

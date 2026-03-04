@@ -53,20 +53,6 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
         private set { _statusMessage = value; OnPropertyChanged(); }
     }
 
-    private string _userFilterText = "";
-    public string UserFilterText
-    {
-        get => _userFilterText;
-        set
-        {
-            var next = value ?? "";
-            if (string.Equals(_userFilterText, next, StringComparison.Ordinal)) return;
-            _userFilterText = next;
-            OnPropertyChanged();
-            ApplyUserFilter();
-        }
-    }
-
     /// <summary>プレビューDataTableが更新された際に発火</summary>
     public event Action? PreviewRefreshRequested;
 
@@ -160,12 +146,13 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
 
         foreach (var v in vars)
         {
+            if (v.Kind == VariableKind.User)
+                v.Users = [.. _allUsers];
             v.ValueChanged += OnVariableValueChanged;
             VariableInputs.Add(v);
         }
 
         OnPropertyChanged(nameof(HasUserVariables));
-        ApplyUserFilter();
         StatusMessage = userFetchMessage;
         PreviewRefreshRequested?.Invoke();
     }
@@ -207,6 +194,12 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
                         };
                     }
 
+                    if (user != null && !input.Users.Any(u =>
+                            string.Equals(u.UniqueName, user.UniqueName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        input.Users = [user, .. input.Users];
+                    }
+
                     input.SelectedUser = user;
                     if (user != null) applied = true;
                     continue;
@@ -220,8 +213,6 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
         {
             _suppressPreviewRefresh = false;
         }
-
-        ApplyUserFilter();
 
         if (!applied)
         {
@@ -291,36 +282,6 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
 
     private static string GetTemplateStorageKey(Template template)
         => string.IsNullOrWhiteSpace(template.Id) ? template.Name : template.Id;
-
-    private void ApplyUserFilter()
-    {
-        foreach (var input in VariableInputs)
-        {
-            if (input.Kind != VariableKind.User) continue;
-
-            var filtered = _allUsers
-                .Where(u => MatchesUserFilter(u, _userFilterText))
-                .ToList();
-
-            if (input.SelectedUser is { } selected &&
-                !filtered.Any(u => SameUser(u, selected)))
-            {
-                filtered.Insert(0, selected);
-            }
-
-            input.Users = filtered;
-        }
-    }
-
-    private static bool MatchesUserFilter(AdoUser user, string filter)
-    {
-        if (string.IsNullOrWhiteSpace(filter)) return true;
-        return user.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase)
-            || user.UniqueName.Contains(filter, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool SameUser(AdoUser left, AdoUser right)
-        => string.Equals(left.UniqueName, right.UniqueName, StringComparison.OrdinalIgnoreCase);
 
     private void OnVariableValueChanged()
     {
