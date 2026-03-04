@@ -27,8 +27,35 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="CaretBrush" Value="White"/>
         </Style>
-        <Style TargetType="ComboBox" BasedOn="{StaticResource AppDarkComboBoxStyle}"/>
-        <Style x:Key="UserVariableComboStyle" TargetType="ComboBox" BasedOn="{StaticResource AppDarkComboBoxStyle}">
+        <Style x:Key="DarkComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#2A2A3E"/>
+            <Setter Property="Foreground" Value="#DDEEFF"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#2A3A5A"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#106EBE"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#667799"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#2A2A3E"/>
+            <Setter Property="Foreground" Value="#DDEEFF"/>
+            <Setter Property="BorderBrush" Value="#334466"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextElement.Foreground" Value="#DDEEFF"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItemStyle}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="UserVariableComboStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
             <Setter Property="IsEditable" Value="True"/>
             <Setter Property="IsTextSearchEnabled" Value="False"/>
             <Setter Property="StaysOpenOnEdit" Value="True"/>
