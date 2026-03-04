@@ -100,8 +100,9 @@
                                           HorizontalAlignment="Center" VerticalAlignment="Center"
                                           IsHitTestVisible="False"/>
 
-                                    <!-- クリック領域 -->
-                                    <ToggleButton Grid.Column="0" Grid.ColumnSpan="2"
+                                    <!-- クリック領域（非編集時は全体、編集時は矢印のみ） -->
+                                    <ToggleButton x:Name="ToggleBtn"
+                                        Grid.Column="0" Grid.ColumnSpan="2"
                                         Background="Transparent" BorderThickness="0"
                                         Focusable="False"
                                         IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
@@ -140,6 +141,9 @@
                             <Trigger Property="IsEditable" Value="True">
                                 <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
                                 <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                                <!-- 編集時はToggleButtonを矢印列のみに縮小してTextBoxへの入力を妨げない -->
+                                <Setter TargetName="ToggleBtn" Property="Grid.Column" Value="1"/>
+                                <Setter TargetName="ToggleBtn" Property="Grid.ColumnSpan" Value="1"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Border" Property="Opacity" Value="0.55"/>

@@ -7,10 +7,7 @@ using System.Windows.Data;
 using TaskAzure.Models;
 using TaskAzure.Services;
 using TaskAzure.ViewModels;
-using Brushes = System.Windows.Media.Brushes;
-using Color = System.Windows.Media.Color;
 using MessageBox = System.Windows.MessageBox;
-using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 using WpfBinding = System.Windows.Data.Binding;
 using WpfCheckBox = System.Windows.Controls.CheckBox;
@@ -40,10 +37,6 @@ public partial class CsvCreatorWindow : Window
         factory.SetValue(WpfCheckBox.VerticalAlignmentProperty, WpfVerticalAlignment.Center);
         return new DataTemplate { VisualTree = factory };
     }
-
-    private static readonly System.Windows.Media.Brush UserComboEditorBackground = new SolidColorBrush(Color.FromRgb(0x25, 0x2B, 0x42));
-    private static readonly System.Windows.Media.Brush UserComboEditorForeground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF6, 0xFF));
-    private static readonly System.Windows.Media.Brush UserComboSelectionBrush = new SolidColorBrush(Color.FromRgb(0x2A, 0x3A, 0x5A));
 
     private readonly CsvCreatorViewModel _vm;
     private DataTable _previewTable = new();
@@ -152,25 +145,8 @@ public partial class CsvCreatorWindow : Window
     private void UserComboBox_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is not WpfComboBox combo) return;
-        ApplyUserComboEditorStyle(combo);
         combo.RemoveHandler(WpfTextBox.TextChangedEvent, new TextChangedEventHandler(UserComboBox_FilterTextChanged));
         combo.AddHandler(WpfTextBox.TextChangedEvent, new TextChangedEventHandler(UserComboBox_FilterTextChanged));
-    }
-
-    private static void ApplyUserComboEditorStyle(WpfComboBox combo)
-    {
-        combo.ApplyTemplate();
-        if (combo.Template.FindName("PART_EditableTextBox", combo) is not WpfTextBox editor)
-            return;
-
-        editor.Background = UserComboEditorBackground;
-        editor.Foreground = UserComboEditorForeground;
-        editor.CaretBrush = Brushes.White;
-        editor.BorderThickness = new Thickness(0);
-        editor.Padding = new Thickness(3, 1, 20, 1);
-        editor.VerticalContentAlignment = VerticalAlignment.Center;
-        editor.SelectionBrush = UserComboSelectionBrush;
-        editor.SelectionOpacity = 1;
     }
 
     private void UserComboBox_DropDownClosed(object sender, EventArgs e)
