@@ -147,21 +147,35 @@ public partial class CsvCreatorWindow : Window
 
         var view = CollectionViewSource.GetDefaultView(combo.ItemsSource);
         if (view == null) return;
+        if (!view.CanFilter) return;
 
         var filterText = combo.Text?.Trim() ?? "";
         if (string.IsNullOrEmpty(filterText))
         {
-            view.Filter = null;
-            view.Refresh();
+            try
+            {
+                view.Filter = null;
+                view.Refresh();
+            }
+            catch
+            {
+                // フィルタ未対応Viewでも落とさない
+            }
             return;
         }
 
-        view.Filter = item =>
-            item is AdoUser user &&
-            (user.DisplayName.Contains(filterText, StringComparison.OrdinalIgnoreCase)
-             || user.UniqueName.Contains(filterText, StringComparison.OrdinalIgnoreCase));
-
-        view.Refresh();
+        try
+        {
+            view.Filter = item =>
+                item is AdoUser user &&
+                (user.DisplayName.Contains(filterText, StringComparison.OrdinalIgnoreCase)
+                 || user.UniqueName.Contains(filterText, StringComparison.OrdinalIgnoreCase));
+            view.Refresh();
+        }
+        catch
+        {
+            return;
+        }
 
         if (!combo.IsDropDownOpen)
             combo.IsDropDownOpen = true;
@@ -170,10 +184,17 @@ public partial class CsvCreatorWindow : Window
     private static void ResetComboFilter(WpfComboBox combo)
     {
         var view = CollectionViewSource.GetDefaultView(combo.ItemsSource);
-        if (view != null)
+        if (view != null && view.CanFilter)
         {
-            view.Filter = null;
-            view.Refresh();
+            try
+            {
+                view.Filter = null;
+                view.Refresh();
+            }
+            catch
+            {
+                // フィルタ解除失敗でも続行
+            }
         }
 
         combo.Text = combo.SelectedItem is AdoUser user ? user.DisplayName : "";
