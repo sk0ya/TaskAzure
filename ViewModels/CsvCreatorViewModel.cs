@@ -115,6 +115,7 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
         if (hasUserVariables && _allUsers.Count == 0)
         {
             // 取得失敗時でも最低限の選択肢を出す
+            var usedFallbackUser = false;
             if (!string.IsNullOrWhiteSpace(_parentItem.AssignedTo))
             {
                 _allUsers =
@@ -125,7 +126,11 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
                         UniqueName = _parentItem.AssignedTo,
                     }
                 ];
+                usedFallbackUser = true;
             }
+
+            if (usedFallbackUser && string.IsNullOrWhiteSpace(userFetchMessage))
+                userFetchMessage = "ユーザー一覧を取得できなかったため、親担当者のみ候補に表示しています。";
 
             if (_allUsers.Count == 0 && string.IsNullOrWhiteSpace(userFetchMessage))
                 userFetchMessage = "ユーザー一覧を取得できませんでした。PATと権限設定を確認してください。";

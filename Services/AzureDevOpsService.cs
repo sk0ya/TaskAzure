@@ -208,25 +208,67 @@ public class AzureDevOpsService : IDisposable
         else
             orgName = uri.Host.Split('.')[0]; // myorg.visualstudio.com 形式
 
-        var url = $"https://vssps.dev.azure.com/{orgName}/_apis/graph/users?api-version=7.1-preview.1";
-        var response = await _client.GetAsync(url, ct);
-        if (!response.IsSuccessStatusCode) return [];
+        var resultByUniqueName = new Dictionary<string, Models.AdoUser>(StringComparer.OrdinalIgnoreCase);
+        string? continuationToken = null;
 
-        var json = await response.Content.ReadAsStringAsync(ct);
-        using var doc = JsonDocument.Parse(json);
-
-        var result = new List<Models.AdoUser>();
-        foreach (var user in doc.RootElement.GetProperty("value").EnumerateArray())
+        do
         {
-            var displayName = user.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? "" : "";
-            var mailAddress = user.TryGetProperty("mailAddress", out var ma) ? ma.GetString() ?? "" : "";
-            if (string.IsNullOrWhiteSpace(displayName) || string.IsNullOrWhiteSpace(mailAddress)) continue;
-            // サービスアカウント等を除外
-            if (mailAddress.Contains("@ado", StringComparison.OrdinalIgnoreCase)) continue;
-            result.Add(new Models.AdoUser { DisplayName = displayName, UniqueName = mailAddress });
+            var url = $"https://vssps.dev.azure.com/{orgName}/_apis/graph/users?api-version=7.1-preview.1";
+            if (!string.IsNullOrWhiteSpace(continuationToken))
+                url += $"&continuationToken={Uri.EscapeDataString(continuationToken)}";
+
+            var response = await _client.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(ct);
+                var details = body.Length > 240 ? body[..240] + "..." : body;
+                throw new HttpRequestException(
+                    $"ユーザー一覧取得APIが失敗しました: HTTP {(int)response.StatusCode} {response.ReasonPhrase}. {details}");
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+
+            if (doc.RootElement.TryGetProperty("value", out var users) &&
+                users.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var user in users.EnumerateArray())
+                {
+                    var displayName = TryGetString(user, "displayName");
+                    var uniqueName = TryGetString(user, "mailAddress");
+                    if (string.IsNullOrWhiteSpace(uniqueName))
+                        uniqueName = TryGetString(user, "principalName");
+
+                    if (string.IsNullOrWhiteSpace(displayName) || string.IsNullOrWhiteSpace(uniqueName))
+                        continue;
+
+                    // サービスアカウント等を除外
+                    if (uniqueName.Contains("@ado", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    resultByUniqueName[uniqueName] = new Models.AdoUser
+                    {
+                        DisplayName = displayName,
+                        UniqueName = uniqueName,
+                    };
+                }
+            }
+
+            continuationToken = null;
+            if (response.Headers.TryGetValues("X-MS-ContinuationToken", out var tokens))
+                continuationToken = tokens.FirstOrDefault();
         }
+        while (!string.IsNullOrWhiteSpace(continuationToken));
+
+        var result = resultByUniqueName.Values.ToList();
         result.Sort((a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.CurrentCulture));
         return result;
+    }
+
+    private static string TryGetString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value)) return "";
+        if (value.ValueKind != JsonValueKind.String) return "";
+        return value.GetString() ?? "";
     }
 
     public void Dispose() => _client?.Dispose();
