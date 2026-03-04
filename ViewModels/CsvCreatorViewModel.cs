@@ -135,10 +135,16 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["parent.Id"]    = _parentItem.Id.ToString(),
-            ["parent.Title"] = _parentItem.Title,
-            ["parent.Type"]  = _parentItem.WorkItemType,
-            ["parent.State"] = _parentItem.State,
+            ["parent.Id"]            = _parentItem.Id.ToString(),
+            ["parent.Title"]         = _parentItem.Title,
+            ["parent.Type"]          = _parentItem.WorkItemType,
+            ["parent.State"]         = _parentItem.State,
+            ["parent.AssignedTo"]    = _parentItem.AssignedTo,
+            ["parent.AreaPath"]      = _parentItem.AreaPath,
+            ["parent.IterationPath"] = _parentItem.IterationPath,
+            ["parent.DevelopProcess"] = _parentItem.DevelopProcess,
+            // タイポ互換: Prosess でも同じ値に解決
+            ["parent.DevelopProsess"] = _parentItem.DevelopProcess,
         };
 
         foreach (var v in VariableInputs)

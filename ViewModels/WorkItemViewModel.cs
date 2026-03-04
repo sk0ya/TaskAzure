@@ -12,6 +12,10 @@ public class WorkItemViewModel(WorkItem item)
     public string Title => item.Title;
     public string WorkItemType => item.WorkItemType;
     public string State => item.State;
+    public string AssignedTo => item.AssignedTo;
+    public string AreaPath => item.AreaPath;
+    public string IterationPath => item.IterationPath;
+    public string DevelopProcess => item.DevelopProcess;
     public string WebUrl => item.WebUrl;
 
     public string IdDisplay => $"#{item.Id}";

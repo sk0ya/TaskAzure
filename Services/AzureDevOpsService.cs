@@ -64,8 +64,7 @@ public class AzureDevOpsService : IDisposable
     private async Task<List<WorkItem>> GetWorkItemDetailsAsync(List<int> ids, CancellationToken ct)
     {
         var idList = string.Join(",", ids);
-        var fields = "System.Id,System.Title,System.WorkItemType,System.State";
-        var url = $"{_orgUrl}/_apis/wit/workitems?ids={idList}&fields={fields}&api-version=7.1";
+        var url = $"{_orgUrl}/_apis/wit/workitems?ids={idList}&api-version=7.1";
 
         var response = await _client!.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
@@ -82,13 +81,44 @@ public class AzureDevOpsService : IDisposable
             result.Add(new WorkItem
             {
                 Id = itemId,
-                Title = fields2.TryGetProperty("System.Title", out var t) ? t.GetString() ?? "" : "",
-                WorkItemType = fields2.TryGetProperty("System.WorkItemType", out var wt) ? wt.GetString() ?? "" : "",
-                State = fields2.TryGetProperty("System.State", out var s) ? s.GetString() ?? "" : "",
+                Title = GetFieldText(fields2, "System.Title"),
+                WorkItemType = GetFieldText(fields2, "System.WorkItemType"),
+                State = GetFieldText(fields2, "System.State"),
+                AssignedTo = GetFieldText(fields2, "System.AssignedTo"),
+                AreaPath = GetFieldText(fields2, "System.AreaPath"),
+                IterationPath = GetFieldText(fields2, "System.IterationPath"),
+                DevelopProcess = GetFieldText(fields2,
+                    "Custom.DevelopProcess",
+                    "Custom.DevelopProsess",
+                    "Microsoft.VSTS.Common.DevelopProcess",
+                    "Microsoft.VSTS.Common.DevelopProsess"),
                 WebUrl = $"{_orgUrl}/{Uri.EscapeDataString(_project)}/_workitems/edit/{itemId}",
             });
         }
         return result;
+    }
+
+    private static string GetFieldText(JsonElement fields, params string[] fieldNames)
+    {
+        foreach (var fieldName in fieldNames)
+        {
+            if (!fields.TryGetProperty(fieldName, out var value)) continue;
+
+            if (value.ValueKind == JsonValueKind.String)
+                return value.GetString() ?? "";
+
+            if (value.ValueKind == JsonValueKind.Object)
+            {
+                if (value.TryGetProperty("displayName", out var dn) && dn.ValueKind == JsonValueKind.String)
+                    return dn.GetString() ?? "";
+                if (value.TryGetProperty("uniqueName", out var un) && un.ValueKind == JsonValueKind.String)
+                    return un.GetString() ?? "";
+            }
+
+            return value.ToString();
+        }
+
+        return "";
     }
 
     public async Task<List<Models.PullRequest>> GetMyPullRequestsAsync(

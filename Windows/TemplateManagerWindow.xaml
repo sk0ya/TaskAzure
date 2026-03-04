@@ -245,7 +245,11 @@
                         <Run Text="${parent.Id}"/> <Run Text=" → 親の ID　　" Foreground="#556677"/>
                         <Run Text="${parent.Title}"/> <Run Text=" → 親のタイトル　　" Foreground="#556677"/>
                         <Run Text="${parent.Type}"/> <Run Text=" → 親の種別　　" Foreground="#556677"/>
-                        <Run Text="${parent.State}"/> <Run Text=" → 親の状態&#x0a;" Foreground="#556677"/>
+                        <Run Text="${parent.State}"/> <Run Text=" → 親の状態　　" Foreground="#556677"/>
+                        <Run Text="${parent.AssignedTo}"/> <Run Text=" → 担当者　　" Foreground="#556677"/>
+                        <Run Text="${parent.AreaPath}"/> <Run Text=" → Area Path　　" Foreground="#556677"/>
+                        <Run Text="${parent.IterationPath}"/> <Run Text=" → Iteration Path　　" Foreground="#556677"/>
+                        <Run Text="${parent.DevelopProcess}"/> <Run Text=" → Develop Process&#x0a;" Foreground="#556677"/>
                         <Run Text="${0:user}"/> <Run Text=" → ユーザー選択 (同番号=同変数)　　" Foreground="#556677"/>
                         <Run Text="${0:text}"/> <Run Text=" → テキスト入力 (同番号=同変数)" Foreground="#556677"/>
                     </TextBlock>
