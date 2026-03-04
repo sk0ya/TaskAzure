@@ -83,9 +83,11 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
         }
 
         var vars = ParseVariables(_selectedTemplate.CsvContent);
+        var hasUserVariables = vars.Any(v => v.Kind == VariableKind.User);
+        var userFetchMessage = "";
 
         // ユーザー変数があれば ADO からユーザー一覧を取得 (初回のみ)
-        if (vars.Any(v => v.Kind == VariableKind.User) && _allUsers.Count == 0)
+        if (hasUserVariables && _allUsers.Count == 0)
         {
             IsLoadingUsers = true;
             StatusMessage = "ユーザー一覧を取得中...";
@@ -100,7 +102,7 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
             }
             catch (Exception ex)
             {
-                StatusMessage = $"ユーザー取得失敗: {ex.Message}";
+                userFetchMessage = $"ユーザー取得失敗: {ex.Message}";
             }
             finally
             {
@@ -110,6 +112,25 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
 
         if (ct.IsCancellationRequested) return;
 
+        if (hasUserVariables && _allUsers.Count == 0)
+        {
+            // 取得失敗時でも最低限の選択肢を出す
+            if (!string.IsNullOrWhiteSpace(_parentItem.AssignedTo))
+            {
+                _allUsers =
+                [
+                    new AdoUser
+                    {
+                        DisplayName = _parentItem.AssignedTo,
+                        UniqueName = _parentItem.AssignedTo,
+                    }
+                ];
+            }
+
+            if (_allUsers.Count == 0 && string.IsNullOrWhiteSpace(userFetchMessage))
+                userFetchMessage = "ユーザー一覧を取得できませんでした。PATと権限設定を確認してください。";
+        }
+
         foreach (var v in vars)
         {
             if (v.Kind == VariableKind.User) v.Users = _allUsers;
@@ -117,7 +138,7 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
             VariableInputs.Add(v);
         }
 
-        StatusMessage = "";
+        StatusMessage = userFetchMessage;
         PreviewRefreshRequested?.Invoke();
     }
 
