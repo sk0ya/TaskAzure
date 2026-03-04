@@ -152,12 +152,18 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
             VariableInputs.Add(v);
         }
 
+        if (hasUserVariables)
+            ApplyLastValuesCore(userOnly: true, showStatus: false, raisePreview: false);
+
         OnPropertyChanged(nameof(HasUserVariables));
         StatusMessage = userFetchMessage;
         PreviewRefreshRequested?.Invoke();
     }
 
     public bool ApplyLastValues()
+        => ApplyLastValuesCore(userOnly: false, showStatus: true, raisePreview: true);
+
+    private bool ApplyLastValuesCore(bool userOnly, bool showStatus, bool raisePreview)
     {
         if (_selectedTemplate == null)
             return false;
@@ -165,7 +171,8 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
         var saved = GetSavedValuesForTemplate(_selectedTemplate);
         if (saved == null || saved.Count == 0)
         {
-            StatusMessage = "前回値が見つかりません。";
+            if (showStatus)
+                StatusMessage = "前回値が見つかりません。";
             return false;
         }
 
@@ -205,6 +212,7 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
                     continue;
                 }
 
+                if (userOnly) continue;
                 input.TextValue = savedValue;
                 applied = true;
             }
@@ -216,12 +224,15 @@ public partial class CsvCreatorViewModel : INotifyPropertyChanged
 
         if (!applied)
         {
-            StatusMessage = "前回値は見つかりましたが、適用対象がありませんでした。";
+            if (showStatus)
+                StatusMessage = "前回値は見つかりましたが、適用対象がありませんでした。";
             return false;
         }
 
-        StatusMessage = "前回値を設定しました。";
-        PreviewRefreshRequested?.Invoke();
+        if (showStatus)
+            StatusMessage = userOnly ? "前回ユーザー値を設定しました。" : "前回値を設定しました。";
+        if (raisePreview)
+            PreviewRefreshRequested?.Invoke();
         return true;
     }
 
