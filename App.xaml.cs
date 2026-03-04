@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Windows;
 using TaskAzure.Services;
 using TaskAzure.ViewModels;
+using TaskAzure.Windows;
 using WinForms = System.Windows.Forms;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
@@ -15,7 +16,12 @@ public partial class App : Application
     private readonly SettingsService _settingsService = new();
     private readonly CredentialService _credService = new();
     private readonly AzureDevOpsService _adoService = new();
+    private readonly TemplateService _templateService = new();
     private MainViewModel? _mainVm;
+
+    internal AzureDevOpsService AdoService => _adoService;
+    internal SettingsService SettingsSvc => _settingsService;
+    internal TemplateService TemplateSvc => _templateService;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -51,6 +57,9 @@ public partial class App : Application
             if (_mainVm != null) await _mainVm.RefreshAsync();
         };
 
+        var templateMgr = new WinForms.ToolStripMenuItem("テンプレート管理(&T)...");
+        templateMgr.Click += (_, _) => OpenTemplateManager();
+
         var settings = new WinForms.ToolStripMenuItem("設定(&S)...");
         settings.Click += (_, _) => OpenSettings();
 
@@ -59,6 +68,8 @@ public partial class App : Application
 
         menu.Items.Add(showHide);
         menu.Items.Add(refresh);
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add(templateMgr);
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add(settings);
         menu.Items.Add(new WinForms.ToolStripSeparator());
@@ -75,6 +86,13 @@ public partial class App : Application
             _main.Hide();
         else
             _main.Show();
+    }
+
+    internal void OpenTemplateManager()
+    {
+        var vm = new TemplateManagerViewModel();
+        var win = new TemplateManagerWindow(vm) { Owner = _main };
+        win.ShowDialog();
     }
 
     internal void OpenSettings(bool firstRun = false)

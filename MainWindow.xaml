@@ -77,6 +77,9 @@
                                                       Click="MenuCopyTitle_Click" Tag="{Binding}"/>
                                             <MenuItem Header="リンクを作成 (_L)"
                                                       Click="MenuCreateLink_Click" Tag="{Binding}"/>
+                                            <Separator/>
+                                            <MenuItem Header="テンプレートから子タスクCSV作成 (_C)"
+                                                      Click="MenuCreateChildCsv_Click" Tag="{Binding}"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <Border.Style>

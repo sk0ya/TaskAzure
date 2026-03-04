@@ -3,8 +3,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using TaskAzure.Services;
 using TaskAzure.ViewModels;
+using TaskAzure.Windows;
 using Clipboard = System.Windows.Clipboard;
 
 namespace TaskAzure;
@@ -12,11 +12,14 @@ namespace TaskAzure;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _vm;
+    private readonly App _app;
+    private System.Windows.Threading.DispatcherTimer? _locationSaveTimer;
 
     public MainWindow(MainViewModel vm, App app)
     {
         InitializeComponent();
         _vm = vm;
+        _app = app;
         DataContext = vm;
 
         InputBindings.Add(new KeyBinding(
@@ -41,11 +44,19 @@ public partial class MainWindow : Window
     protected override void OnLocationChanged(EventArgs e)
     {
         base.OnLocationChanged(e);
-        var svc = new SettingsService();
-        var s = svc.Load();
-        s.WindowLeft = Left;
-        s.WindowTop = Top;
-        svc.Save(s);
+        // ドラッグ中の連続発火をデバウンス — 500ms 後に1回だけ保存
+        _locationSaveTimer?.Stop();
+        _locationSaveTimer = new System.Windows.Threading.DispatcherTimer
+            { Interval = TimeSpan.FromMilliseconds(500) };
+        _locationSaveTimer.Tick += (_, _) =>
+        {
+            _locationSaveTimer!.Stop();
+            var s = _app.SettingsSvc.Load();
+            s.WindowLeft = Left;
+            s.WindowTop = Top;
+            _app.SettingsSvc.Save(s);
+        };
+        _locationSaveTimer.Start();
     }
 
     // ─── コンテキストメニュー ─────────────────────────────────────
@@ -148,6 +159,15 @@ public partial class MainWindow : Window
             Clipboard.SetDataObject(data);
         }
         catch { }
+    }
+
+    private void MenuCreateChildCsv_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetVm(sender) is not { } vm) return;
+        var settings = _app.SettingsSvc.Load();
+        var creatorVm = new CsvCreatorViewModel(_app.AdoService, vm, settings, _app.TemplateSvc);
+        var win = new CsvCreatorWindow(creatorVm) { Owner = this };
+        win.ShowDialog();
     }
 
     private static void SetClipboard(string text)

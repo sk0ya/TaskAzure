@@ -165,5 +165,39 @@ public class AzureDevOpsService : IDisposable
         return _currentUserId;
     }
 
+    /// <summary>組織のユーザー一覧を取得する (vssps API)</summary>
+    public async Task<List<Models.AdoUser>> GetUsersAsync(CancellationToken ct = default)
+    {
+        if (_client == null) throw new InvalidOperationException("サービスが設定されていません。");
+
+        // orgUrl から組織名を取得
+        var uri = new Uri(_orgUrl);
+        string orgName;
+        if (uri.Host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
+            orgName = uri.PathAndQuery.TrimStart('/').Split('/')[0];
+        else
+            orgName = uri.Host.Split('.')[0]; // myorg.visualstudio.com 形式
+
+        var url = $"https://vssps.dev.azure.com/{orgName}/_apis/graph/users?api-version=7.1-preview.1";
+        var response = await _client.GetAsync(url, ct);
+        if (!response.IsSuccessStatusCode) return [];
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(json);
+
+        var result = new List<Models.AdoUser>();
+        foreach (var user in doc.RootElement.GetProperty("value").EnumerateArray())
+        {
+            var displayName = user.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? "" : "";
+            var mailAddress = user.TryGetProperty("mailAddress", out var ma) ? ma.GetString() ?? "" : "";
+            if (string.IsNullOrWhiteSpace(displayName) || string.IsNullOrWhiteSpace(mailAddress)) continue;
+            // サービスアカウント等を除外
+            if (mailAddress.Contains("@ado", StringComparison.OrdinalIgnoreCase)) continue;
+            result.Add(new Models.AdoUser { DisplayName = displayName, UniqueName = mailAddress });
+        }
+        result.Sort((a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.CurrentCulture));
+        return result;
+    }
+
     public void Dispose() => _client?.Dispose();
 }
