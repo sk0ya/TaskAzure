@@ -36,7 +36,7 @@ public class AzureDevOpsService : IDisposable
         var wiqlBody = JsonSerializer.Serialize(new
         {
             query = "SELECT [System.Id] FROM workitems WHERE [System.AssignedTo] = @Me " +
-                    "AND [System.State] NOT IN ('Closed','Done','Resolved','Removed') " +
+                    "AND [System.State] NOT IN ('Closed','Done','Removed') " +
                     "ORDER BY [System.ChangedDate] DESC"
         });
 
