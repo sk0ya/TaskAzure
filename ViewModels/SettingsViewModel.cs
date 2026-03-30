@@ -16,6 +16,7 @@ public class SettingsViewModel : INotifyPropertyChanged
     private string _project = "";
     private string _patEnvVarName = "ADO_PAT";
     private int _refreshMinutes = 5;
+    private bool _runAtStartup;
 
     public ObservableCollection<PrTarget> PrTargets { get; } = [];
 
@@ -49,6 +50,12 @@ public class SettingsViewModel : INotifyPropertyChanged
         set { _refreshMinutes = value > 0 ? value : 1; OnPropertyChanged(); }
     }
 
+    public bool RunAtStartup
+    {
+        get => _runAtStartup;
+        set { _runAtStartup = value; OnPropertyChanged(); }
+    }
+
     public SettingsViewModel(SettingsService settings)
     {
         _settings = settings;
@@ -72,6 +79,7 @@ public class SettingsViewModel : INotifyPropertyChanged
         RefreshIntervalMinutes = s.RefreshIntervalMinutes > 0 ? s.RefreshIntervalMinutes : 5;
         PrTargets.Clear();
         foreach (var t in s.PrTargets) PrTargets.Add(t);
+        RunAtStartup = StartupService.IsEnabled();
     }
 
     public (bool ok, string error) Save(double winLeft, double winTop)
@@ -93,6 +101,7 @@ public class SettingsViewModel : INotifyPropertyChanged
         s.PrTargets = [.. PrTargets];
 
         _settings.Save(s);
+        StartupService.Apply(RunAtStartup);
         return (true, "");
     }
 

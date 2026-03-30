@@ -99,7 +99,13 @@
 
         <!-- 更新間隔 -->
         <TextBlock Style="{StaticResource LabelStyle}" Text="自動更新間隔 (分)"/>
-        <TextBox x:Name="RefreshBox" Width="80" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+        <TextBox x:Name="RefreshBox" Width="80" HorizontalAlignment="Left" Margin="0,0,0,14"/>
+
+        <CheckBox x:Name="StartupCheck" Margin="0,0,0,20"
+                  IsChecked="{Binding RunAtStartup, Mode=TwoWay}"
+                  Foreground="#CCDDFF" FontSize="12" Cursor="Hand">
+            Windows 起動時に自動起動する
+        </CheckBox>
 
         <!-- PR 対象リポジトリ -->
         <TextBlock Style="{StaticResource LabelStyle}" Text="PR 対象リポジトリ (複数指定可)" Margin="0,0,0,6"/>
