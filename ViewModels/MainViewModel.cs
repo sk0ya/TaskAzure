@@ -14,6 +14,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly AzureDevOpsService _ado;
     private readonly SettingsService _settings;
     private readonly CredentialService _cred;
+    private readonly HistoryService _history;
 
     private ObservableCollection<WorkItemViewModel> _workItems = [];
     private ObservableCollection<PullRequestViewModel> _unlinkedPullRequests = [];
@@ -55,11 +56,13 @@ public class MainViewModel : INotifyPropertyChanged
         private set { _lastUpdated = value; OnPropertyChanged(); }
     }
 
-    public MainViewModel(AzureDevOpsService ado, SettingsService settings, CredentialService cred)
+    public MainViewModel(AzureDevOpsService ado, SettingsService settings, CredentialService cred,
+        HistoryService history)
     {
         _ado = ado;
         _settings = settings;
         _cred = cred;
+        _history = history;
     }
 
     public async Task InitializeAsync()
@@ -97,6 +100,9 @@ public class MainViewModel : INotifyPropertyChanged
 
             var items = itemsTask.Result;
             var prs   = prsTask.Result;
+
+            // 一度でも自分に割り当てられた WorkItem を履歴に記録 (失敗しても表示は継続)
+            try { _history.Record(items); } catch { }
 
             // WorkItem ViewModel を先に作成
             var workItemVms = items.Select(i => new WorkItemViewModel(i)).ToList();

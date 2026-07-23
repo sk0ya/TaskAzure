@@ -80,6 +80,9 @@
                                             <Separator/>
                                             <MenuItem Header="テンプレートから子タスクCSV作成 (_C)"
                                                       Click="MenuCreateChildCsv_Click" Tag="{Binding}"/>
+                                            <Separator/>
+                                            <MenuItem Header="タスク履歴 (_H)"
+                                                      Click="MenuShowHistory_Click"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <Border.Style>

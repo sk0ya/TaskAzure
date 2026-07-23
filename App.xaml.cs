@@ -17,11 +17,13 @@ public partial class App : Application
     private readonly CredentialService _credService = new();
     private readonly AzureDevOpsService _adoService = new();
     private readonly TemplateService _templateService = new();
+    private readonly HistoryService _historyService = new();
     private MainViewModel? _mainVm;
 
     internal AzureDevOpsService AdoService => _adoService;
     internal SettingsService SettingsSvc => _settingsService;
     internal TemplateService TemplateSvc => _templateService;
+    internal HistoryService HistorySvc => _historyService;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -57,6 +59,9 @@ public partial class App : Application
             if (_mainVm != null) await _mainVm.RefreshAsync();
         };
 
+        var history = new WinForms.ToolStripMenuItem("タスク履歴(&H)...");
+        history.Click += (_, _) => OpenHistory();
+
         var templateMgr = new WinForms.ToolStripMenuItem("テンプレート管理(&T)...");
         templateMgr.Click += (_, _) => OpenTemplateManager();
 
@@ -69,6 +74,7 @@ public partial class App : Application
         menu.Items.Add(showHide);
         menu.Items.Add(refresh);
         menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add(history);
         menu.Items.Add(templateMgr);
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add(settings);
@@ -86,6 +92,13 @@ public partial class App : Application
             _main.Hide();
         else
             _main.Show();
+    }
+
+    internal void OpenHistory()
+    {
+        var vm = new HistoryViewModel(_historyService, _adoService);
+        var win = new HistoryWindow(vm) { Owner = _main };
+        win.ShowDialog();
     }
 
     internal void OpenTemplateManager()
@@ -127,7 +140,7 @@ public partial class App : Application
 
     private async Task ShowMainWindowAsync()
     {
-        _mainVm = new MainViewModel(_adoService, _settingsService, _credService);
+        _mainVm = new MainViewModel(_adoService, _settingsService, _credService, _historyService);
         _main = new MainWindow(_mainVm, this);
 
         var s = _settingsService.Load();

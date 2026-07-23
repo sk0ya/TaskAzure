@@ -1,11 +1,9 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using TaskAzure.ViewModels;
 using TaskAzure.Windows;
-using Clipboard = System.Windows.Clipboard;
 
 namespace TaskAzure;
 
@@ -25,6 +23,10 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(
             new RelayCommand(async () => await _vm.RefreshAsync()),
             new KeyGesture(Key.F5)));
+
+        InputBindings.Add(new KeyBinding(
+            new RelayCommand(() => _app.OpenHistory()),
+            new KeyGesture(Key.H, ModifierKeys.Control)));
     }
 
     // ─── ドラッグ移動 ─────────────────────────────────────────────
@@ -82,83 +84,45 @@ public partial class MainWindow : Window
 
     private void MenuCopyId_Click(object sender, RoutedEventArgs e)
     {
-        if (GetVm(sender) is { } vm) SetClipboard(vm.Id.ToString());
+        if (GetVm(sender) is { } vm) ClipboardUtil.SetText(vm.Id.ToString());
     }
 
     private void MenuCopyTitle_Click(object sender, RoutedEventArgs e)
     {
-        if (GetVm(sender) is { } vm) SetClipboard(vm.Title);
+        if (GetVm(sender) is { } vm) ClipboardUtil.SetText(vm.Title);
     }
 
     private void MenuOpenWeb_Click(object sender, RoutedEventArgs e)
     {
-        if (GetVm(sender) is { } vm) OpenUrl(vm.WebUrl);
+        if (GetVm(sender) is { } vm) ClipboardUtil.OpenUrl(vm.WebUrl);
     }
 
     private void MenuCreateLink_Click(object sender, RoutedEventArgs e)
     {
-        if (GetVm(sender) is not { } vm) return;
-        try
-        {
-            var data = new System.Windows.DataObject();
-            data.SetData(System.Windows.DataFormats.Text, vm.MarkdownLink);
-            data.SetData(System.Windows.DataFormats.Html, BuildHtmlClipboard(vm.HtmlLink));
-            Clipboard.SetDataObject(data);
-        }
-        catch { }
+        if (GetVm(sender) is { } vm) ClipboardUtil.SetLink(vm.MarkdownLink, vm.HtmlLink);
     }
 
-    // Windows HTML クリップボード形式に必要なヘッダーを付与する
-    private static string BuildHtmlClipboard(string html)
-    {
-        const string header =
-            "Version:0.9\r\n" +
-            "StartHTML:00000000\r\n" +
-            "EndHTML:00000000\r\n" +
-            "StartFragment:00000000\r\n" +
-            "EndFragment:00000000\r\n";
-        const string pre  = "<html><body><!--StartFragment-->";
-        const string post = "<!--EndFragment--></body></html>";
-
-        var startHtml     = System.Text.Encoding.UTF8.GetByteCount(header);
-        var startFragment = startHtml + System.Text.Encoding.UTF8.GetByteCount(pre);
-        var endFragment   = startFragment + System.Text.Encoding.UTF8.GetByteCount(html);
-        var endHtml       = endFragment + System.Text.Encoding.UTF8.GetByteCount(post);
-
-        return header
-            .Replace("StartHTML:00000000",     $"StartHTML:{startHtml:D8}")
-            .Replace("EndHTML:00000000",       $"EndHTML:{endHtml:D8}")
-            .Replace("StartFragment:00000000", $"StartFragment:{startFragment:D8}")
-            .Replace("EndFragment:00000000",   $"EndFragment:{endFragment:D8}")
-            + pre + html + post;
-    }
+    private void MenuShowHistory_Click(object sender, RoutedEventArgs e)
+        => _app.OpenHistory();
 
     private void MenuOpenPR_Click(object sender, RoutedEventArgs e)
     {
-        if (GetPrVm(sender) is { } vm) OpenUrl(vm.WebUrl);
+        if (GetPrVm(sender) is { } vm) ClipboardUtil.OpenUrl(vm.WebUrl);
     }
 
     private void MenuCopyPRId_Click(object sender, RoutedEventArgs e)
     {
-        if (GetPrVm(sender) is { } vm) SetClipboard(vm.Id.ToString());
+        if (GetPrVm(sender) is { } vm) ClipboardUtil.SetText(vm.Id.ToString());
     }
 
     private void MenuCopyPRTitle_Click(object sender, RoutedEventArgs e)
     {
-        if (GetPrVm(sender) is { } vm) SetClipboard(vm.Title);
+        if (GetPrVm(sender) is { } vm) ClipboardUtil.SetText(vm.Title);
     }
 
     private void MenuCreatePRLink_Click(object sender, RoutedEventArgs e)
     {
-        if (GetPrVm(sender) is not { } vm) return;
-        try
-        {
-            var data = new System.Windows.DataObject();
-            data.SetData(System.Windows.DataFormats.Text, vm.MarkdownLink);
-            data.SetData(System.Windows.DataFormats.Html, BuildHtmlClipboard(vm.HtmlLink));
-            Clipboard.SetDataObject(data);
-        }
-        catch { }
+        if (GetPrVm(sender) is { } vm) ClipboardUtil.SetLink(vm.MarkdownLink, vm.HtmlLink);
     }
 
     private void MenuCreateChildCsv_Click(object sender, RoutedEventArgs e)
@@ -168,15 +132,5 @@ public partial class MainWindow : Window
         var creatorVm = new CsvCreatorViewModel(_app.AdoService, vm, settings, _app.SettingsSvc, _app.TemplateSvc);
         var win = new CsvCreatorWindow(creatorVm) { Owner = this };
         win.ShowDialog();
-    }
-
-    private static void SetClipboard(string text)
-    {
-        try { Clipboard.SetText(text); } catch { }
-    }
-
-    private static void OpenUrl(string url)
-    {
-        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
     }
 }

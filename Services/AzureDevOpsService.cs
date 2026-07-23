@@ -73,7 +73,36 @@ public class AzureDevOpsService : IDisposable
         using var doc = JsonDocument.Parse(json);
 
         var result = new List<WorkItem>();
-        foreach (var item in doc.RootElement.GetProperty("value").EnumerateArray())
+        ParseWorkItems(doc.RootElement.GetProperty("value"), result);
+        return result;
+    }
+
+    /// <summary>ID 指定で WorkItem を取得する (削除済み ID は無視)。履歴表示の最新化用</summary>
+    public async Task<List<WorkItem>> GetWorkItemsByIdsAsync(IReadOnlyList<int> ids, CancellationToken ct = default)
+    {
+        if (_client == null) throw new InvalidOperationException("サービスが設定されていません。");
+
+        var result = new List<WorkItem>();
+        for (var i = 0; i < ids.Count; i += 200)
+        {
+            var chunk = ids.Skip(i).Take(200).ToList();
+            var body = JsonSerializer.Serialize(new { ids = chunk, errorPolicy = "omit" });
+            var url = $"{_orgUrl}/_apis/wit/workitemsbatch?api-version=7.1";
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+
+            var response = await _client.PostAsync(url, content, ct);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            ParseWorkItems(doc.RootElement.GetProperty("value"), result);
+        }
+        return result;
+    }
+
+    private void ParseWorkItems(JsonElement valueArray, List<WorkItem> result)
+    {
+        foreach (var item in valueArray.EnumerateArray())
         {
             var itemId = item.GetProperty("id").GetInt32();
             var fields2 = item.GetProperty("fields");
@@ -95,7 +124,6 @@ public class AzureDevOpsService : IDisposable
                 WebUrl = $"{_orgUrl}/{Uri.EscapeDataString(_project)}/_workitems/edit/{itemId}",
             });
         }
-        return result;
     }
 
     private static string GetFieldText(JsonElement fields, params string[] fieldNames)
