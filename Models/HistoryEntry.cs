@@ -21,9 +21,15 @@ public class HistoryEntry
     public string AreaPath { get; set; } = string.Empty;
     public string IterationPath { get; set; } = string.Empty;
 
+    /// <summary>親 WorkItem の ID (親子表示用)。親なしは 0</summary>
+    public int ParentId { get; set; }
+
     // PR 用フィールド (状態の再取得に使用)
     public string Project { get; set; } = string.Empty;
     public string RepositoryName { get; set; } = string.Empty;
+
+    /// <summary>PR がリンクする WorkItem の ID 一覧 (親子表示用)</summary>
+    public List<int> LinkedWorkItemIds { get; set; } = [];
 
     /// <summary>WorkItem の State、または PR の status (Active/Completed/Abandoned)</summary>
     public string State { get; set; } = string.Empty;
@@ -47,6 +53,7 @@ public class HistoryEntry
         AreaPath = item.AreaPath,
         IterationPath = item.IterationPath,
         WebUrl = item.WebUrl,
+        ParentId = item.ParentId,
         FirstSeen = now,
         LastSeen = now,
     };
@@ -60,6 +67,7 @@ public class HistoryEntry
         AreaPath = item.AreaPath;
         IterationPath = item.IterationPath;
         WebUrl = item.WebUrl;
+        ParentId = item.ParentId;
     }
 
     public static HistoryEntry FromPullRequest(PullRequest pr, string project, DateTime now) => new()
@@ -71,6 +79,7 @@ public class HistoryEntry
         Project = project,
         RepositoryName = pr.RepositoryName,
         WebUrl = pr.WebUrl,
+        LinkedWorkItemIds = [.. pr.LinkedWorkItemIds],
         FirstSeen = now,
         LastSeen = now,
     };
@@ -80,6 +89,7 @@ public class HistoryEntry
         Title = pr.Title;
         RepositoryName = pr.RepositoryName;
         WebUrl = pr.WebUrl;
+        LinkedWorkItemIds = [.. pr.LinkedWorkItemIds];
         if (!string.IsNullOrEmpty(project)) Project = project;
     }
 }

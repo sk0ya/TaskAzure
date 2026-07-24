@@ -14,6 +14,16 @@ public class HistoryItemViewModel(HistoryEntry entry)
     public string State => entry.State;
     public string WebUrl => entry.WebUrl;
 
+    /// <summary>親 WorkItem の ID (WorkItem のみ)。親なしは 0</summary>
+    public int ParentId => entry.ParentId;
+
+    /// <summary>PR がリンクする WorkItem の ID 一覧</summary>
+    public IReadOnlyList<int> LinkedWorkItemIds => entry.LinkedWorkItemIds;
+
+    /// <summary>親子ツリーの深さ (ApplyFilter で設定)。左インデントに使用</summary>
+    public int Depth { get; set; }
+    public System.Windows.Thickness IndentMargin => new(Depth * 16, 0, 0, 0);
+
     /// <summary>種別フィルターの選択肢に使う表示名 (PR は "Pull Request")</summary>
     public string TypeName => entry.Kind == HistoryKind.PullRequest ? "Pull Request" : entry.WorkItemType;
 

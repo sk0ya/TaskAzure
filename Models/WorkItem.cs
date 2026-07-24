@@ -11,4 +11,7 @@ public class WorkItem
     public string IterationPath { get; set; } = string.Empty;
     public string DevelopProcess { get; set; } = string.Empty;
     public string WebUrl { get; set; } = string.Empty;
+
+    /// <summary>親 WorkItem の ID (System.Parent)。親なしは 0</summary>
+    public int ParentId { get; set; }
 }

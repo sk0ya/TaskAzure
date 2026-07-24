@@ -122,6 +122,7 @@ public class AzureDevOpsService : IDisposable
                     "Microsoft.VSTS.Common.DevelopProcess",
                     "Microsoft.VSTS.Common.DevelopProsess"),
                 WebUrl = $"{_orgUrl}/{Uri.EscapeDataString(_project)}/_workitems/edit/{itemId}",
+                ParentId = GetFieldInt(fields2, "System.Parent"),
             });
         }
     }
@@ -315,6 +316,15 @@ public class AzureDevOpsService : IDisposable
         var result = resultByUniqueName.Values.ToList();
         result.Sort((a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.CurrentCulture));
         return result;
+    }
+
+    private static int GetFieldInt(JsonElement fields, string fieldName)
+    {
+        if (fields.TryGetProperty(fieldName, out var value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetInt32(out var n))
+            return n;
+        return 0;
     }
 
     private static string TryGetString(JsonElement element, string propertyName)

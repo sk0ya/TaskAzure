@@ -230,6 +230,7 @@
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:HistoryItemViewModel}">
                     <Grid Tag="{Binding}" Background="Transparent"
+                          Margin="{Binding IndentMargin}"
                           ToolTip="{Binding TooltipText}">
                         <Grid.ContextMenu>
                             <ContextMenu>
