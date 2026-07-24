@@ -67,5 +67,15 @@ public partial class HistoryWindow : Window
         if (GetVm(sender) is { } vm) _vm.Remove(vm);
     }
 
+    private void Expander_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: HistoryItemViewModel vm })
+            _vm.ToggleExpand(vm);
+    }
+
+    private void ExpandAll_Click(object sender, RoutedEventArgs e) => _vm.ExpandAll();
+
+    private void CollapseAll_Click(object sender, RoutedEventArgs e) => _vm.CollapseAll();
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

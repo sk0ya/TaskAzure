@@ -24,6 +24,15 @@ public class HistoryItemViewModel(HistoryEntry entry)
     public int Depth { get; set; }
     public System.Windows.Thickness IndentMargin => new(Depth * 16, 0, 0, 0);
 
+    /// <summary>子を持つか (ApplyFilter で設定)</summary>
+    public bool HasChildren { get; set; }
+    /// <summary>展開中か (ApplyFilter で設定)</summary>
+    public bool IsExpanded { get; set; } = true;
+    /// <summary>トグルを表示するか</summary>
+    public bool ShowExpander => HasChildren;
+    /// <summary>トグルの記号</summary>
+    public string ExpanderGlyph => IsExpanded ? "▾" : "▸";
+
     /// <summary>履歴外から親子表示のために取得した親 (自分の履歴ではない)</summary>
     public bool IsContext { get; init; }
     public double RowOpacity => IsContext ? 0.6 : 1.0;

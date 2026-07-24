@@ -11,8 +11,46 @@ public class HistoryService
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TaskAzure");
 
     private static readonly string HistoryPath = Path.Combine(HistoryDir, "history.json");
+    private static readonly string CollapsedPath = Path.Combine(HistoryDir, "history_collapsed.json");
 
     private readonly object _lock = new();
+
+    /// <summary>折りたたみ中のノードキー ("WorkItem:123" 等) を読み込む</summary>
+    public HashSet<string> LoadCollapsedKeys()
+    {
+        lock (_lock)
+        {
+            try
+            {
+                if (!File.Exists(CollapsedPath))
+                    return [];
+                var json = File.ReadAllText(CollapsedPath);
+                var list = JsonSerializer.Deserialize<List<string>>(json);
+                return list is null ? [] : [.. list];
+            }
+            catch
+            {
+                return [];
+            }
+        }
+    }
+
+    public void SaveCollapsedKeys(IEnumerable<string> keys)
+    {
+        lock (_lock)
+        {
+            try
+            {
+                Directory.CreateDirectory(HistoryDir);
+                var json = JsonSerializer.Serialize(keys.ToList(), new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(CollapsedPath, json);
+            }
+            catch
+            {
+                // 保持失敗は無視
+            }
+        }
+    }
 
     public List<HistoryEntry> Load()
     {

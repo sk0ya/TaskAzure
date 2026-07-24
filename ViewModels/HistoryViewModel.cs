@@ -20,6 +20,12 @@ public class HistoryViewModel : INotifyPropertyChanged
     private List<HistoryItemViewModel> _all = [];         // _persisted + _context
     private Dictionary<int, HistoryItemViewModel> _byWorkItemId = [];
     private ObservableCollection<HistoryItemViewModel> _items = [];
+
+    // 折りたたみ中ノードのキー ("WorkItem:123") — ディスクに永続化
+    private HashSet<string> _collapsed = [];
+    private HashSet<string> _collapsibleKeys = [];
+
+    private static string KeyOf(HistoryItemViewModel v) => $"{v.Kind}:{v.Id}";
     private ObservableCollection<string> _typeOptions = [AllOption];
     private ObservableCollection<string> _stateOptions = [AllOption];
     private string _filterText = "";
@@ -77,6 +83,7 @@ public class HistoryViewModel : INotifyPropertyChanged
 
     public async Task InitializeAsync()
     {
+        _collapsed = _history.LoadCollapsedKeys();
         LoadLocal();
 
         // サーバーから最新の状態を取得して履歴を更新する (失敗しても履歴表示は継続)
@@ -170,6 +177,31 @@ public class HistoryViewModel : INotifyPropertyChanged
         _history.Remove(vm.Kind, vm.Id);
         _persisted.Remove(vm);
         Recompose();
+    }
+
+    /// <summary>ノードの展開/折りたたみを切り替えて永続化する</summary>
+    public void ToggleExpand(HistoryItemViewModel vm)
+    {
+        if (!vm.HasChildren) return;
+        var key = KeyOf(vm);
+        if (!_collapsed.Remove(key)) _collapsed.Add(key);
+        _history.SaveCollapsedKeys(_collapsed);
+        ApplyFilter();
+    }
+
+    public void ExpandAll()
+    {
+        if (_collapsed.Count == 0) return;
+        _collapsed.Clear();
+        _history.SaveCollapsedKeys(_collapsed);
+        ApplyFilter();
+    }
+
+    public void CollapseAll()
+    {
+        _collapsed = [.. _collapsibleKeys];
+        _history.SaveCollapsedKeys(_collapsed);
+        ApplyFilter();
     }
 
     private void LoadLocal()
@@ -277,16 +309,26 @@ public class HistoryViewModel : INotifyPropertyChanged
             }
         }
 
-        // 前順走査でフラット化し、深さを付与
+        // 折りたたみ可能なノード(子を持つ)のキーを記録
+        _collapsibleKeys = childrenOf.Keys.Select(KeyOf).ToHashSet();
+
+        // フィルター中は折りたたみを無視して全展開 (該当が隠れないように)
+        var filtering = _selectedType != AllOption || _selectedState != AllOption || text.Length > 0;
+
+        // 前順走査でフラット化し、深さ・展開状態を付与。折りたたみ中は子孫をスキップ
         var flat = new List<HistoryItemViewModel>();
         var seen = new HashSet<HistoryItemViewModel>();
         void Walk(HistoryItemViewModel v, int depth)
         {
             if (!seen.Add(v)) return;
             v.Depth = depth;
+            var hasKids = childrenOf.TryGetValue(v, out var kids) && kids.Count > 0;
+            v.HasChildren = hasKids;
+            var expanded = filtering || !_collapsed.Contains(KeyOf(v));
+            v.IsExpanded = expanded;
             flat.Add(v);
-            if (childrenOf.TryGetValue(v, out var kids))
-                foreach (var k in kids) Walk(k, depth + 1);
+            if (hasKids && expanded)
+                foreach (var k in kids!) Walk(k, depth + 1);
         }
         foreach (var r in roots) Walk(r, 0);
 
