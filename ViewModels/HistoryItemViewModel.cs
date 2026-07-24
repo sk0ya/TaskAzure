@@ -5,28 +5,78 @@ using TaskAzure.Models;
 
 namespace TaskAzure.ViewModels;
 
-/// <summary>履歴ウィンドウの1行分。WorkItemViewModel の表示ロジックを流用する</summary>
-public class HistoryItemViewModel(WorkItemHistoryEntry entry) : WorkItemViewModel(entry.ToWorkItem())
+/// <summary>履歴ウィンドウの1行 (WorkItem / PR 両対応)</summary>
+public class HistoryItemViewModel(HistoryEntry entry)
 {
+    public HistoryKind Kind => entry.Kind;
+    public int Id => entry.Id;
+    public string Title => entry.Title;
+    public string State => entry.State;
+    public string WebUrl => entry.WebUrl;
+
+    /// <summary>種別フィルターの選択肢に使う表示名 (PR は "Pull Request")</summary>
+    public string TypeName => entry.Kind == HistoryKind.PullRequest ? "Pull Request" : entry.WorkItemType;
+
     public DateTime FirstSeen => entry.FirstSeen;
     public DateTime LastSeen => entry.LastSeen;
-
     public string FirstSeenDisplay => entry.FirstSeen.ToString("yyyy/MM/dd");
     public string LastSeenDisplay => entry.LastSeen.ToString("yyyy/MM/dd");
 
-    public string TooltipText =>
-        $"#{Id} {Title}\n状態: {State}\n初回確認: {FirstSeenDisplay} / 最終確認: {LastSeenDisplay}";
+    public string IdDisplay => entry.Kind == HistoryKind.PullRequest ? $"PR#{entry.Id}" : $"#{entry.Id}";
 
-    public Brush StateColor => State switch
+    public string TypeShort => entry.Kind == HistoryKind.PullRequest
+        ? "PR"
+        : entry.WorkItemType switch
+        {
+            "Bug" => "Bug",
+            "User Story" => "Story",
+            "Task" => "Task",
+            "Feature" => "Feature",
+            "Epic" => "Epic",
+            "Test Case" => "Test",
+            "Issue" => "Issue",
+            var s when s.Length > 5 => s[..5],
+            var s => s,
+        };
+
+    public Brush TypeColor => entry.Kind == HistoryKind.PullRequest
+        ? new SolidColorBrush(Color.FromRgb(0x66, 0xAA, 0xFF))  // 青: PR
+        : entry.WorkItemType switch
+        {
+            "Bug"        => new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B)),
+            "User Story" => new SolidColorBrush(Color.FromRgb(0xBB, 0x99, 0xFF)),
+            "Task"       => new SolidColorBrush(Color.FromRgb(0x4D, 0xAA, 0xFF)),
+            "Feature"    => new SolidColorBrush(Color.FromRgb(0x55, 0xCC, 0x88)),
+            "Epic"       => new SolidColorBrush(Color.FromRgb(0xFF, 0x99, 0x44)),
+            "Test Case"  => new SolidColorBrush(Color.FromRgb(0xDD, 0xDD, 0x44)),
+            _            => new SolidColorBrush(Color.FromRgb(0x88, 0x99, 0xAA)),
+        };
+
+    public Brush StateColor => entry.State switch
     {
         "Active" or "Doing" or "In Progress" or "Committed"
             => new SolidColorBrush(Color.FromRgb(0x4D, 0xAA, 0xFF)),  // 青: 進行中
-        "Resolved"
-            => new SolidColorBrush(Color.FromRgb(0x55, 0xCC, 0x88)),  // 緑: 解決済み
-        "Closed" or "Done" or "Removed"
-            => new SolidColorBrush(Color.FromRgb(0x66, 0x77, 0x88)),  // グレー: 完了
+        "Resolved" or "Completed"
+            => new SolidColorBrush(Color.FromRgb(0x55, 0xCC, 0x88)),  // 緑: 解決/完了
+        "Closed" or "Done" or "Removed" or "Abandoned"
+            => new SolidColorBrush(Color.FromRgb(0x66, 0x77, 0x88)),  // グレー: 終了
         "New" or "To Do" or "Proposed"
             => new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0x99)),  // 黄: 未着手
         _   => new SolidColorBrush(Color.FromRgb(0x88, 0x99, 0xAA)),
     };
+
+    public string MarkdownLink => entry.Kind == HistoryKind.PullRequest
+        ? $"[PR#{Id}: {Title}]({WebUrl})"
+        : $"[{TypeShort} {Id}: {Title}]({WebUrl})";
+
+    public string HtmlLink => entry.Kind == HistoryKind.PullRequest
+        ? $"<a href=\"{WebUrl}\">PR#{Id}</a>: {Title}"
+        : $"<a href=\"{WebUrl}\">{TypeShort} {Id}</a>: {Title}";
+
+    public string TooltipText =>
+        $"{IdDisplay} {Title}\n状態: {State}\n初回確認: {FirstSeenDisplay} / 最終確認: {LastSeenDisplay}";
+
+    // PR status 再取得用
+    public string Project => entry.Project;
+    public string RepositoryName => entry.RepositoryName;
 }

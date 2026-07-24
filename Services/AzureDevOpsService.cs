@@ -198,12 +198,37 @@ public class AzureDevOpsService : IDisposable
             {
                 Id                 = prId,
                 Title              = title,
+                Project            = target.Project,
                 RepositoryName     = target.Repository,
                 WebUrl             = $"{_orgUrl}/{encodedProject}/_git/{encodedRepo}/pullrequest/{prId}",
                 LinkedWorkItemIds  = linkedIds,
             });
         }
         return result;
+    }
+
+    /// <summary>PR の現在の status を取得する (active/completed/abandoned)。失敗時は null</summary>
+    public async Task<string?> GetPullRequestStateAsync(
+        string project, string repository, int prId, CancellationToken ct = default)
+    {
+        if (_client == null) throw new InvalidOperationException("サービスが設定されていません。");
+        if (string.IsNullOrWhiteSpace(project) || string.IsNullOrWhiteSpace(repository)) return null;
+
+        var encodedProject = Uri.EscapeDataString(project);
+        var encodedRepo    = Uri.EscapeDataString(repository);
+        var url = $"{_orgUrl}/{encodedProject}/_apis/git/repositories/{encodedRepo}/pullrequests/{prId}?api-version=7.1";
+
+        var response = await _client.GetAsync(url, ct);
+        if (!response.IsSuccessStatusCode) return null;
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("status", out var status) ||
+            status.ValueKind != JsonValueKind.String)
+            return null;
+
+        var raw = status.GetString() ?? "";
+        return raw.Length == 0 ? null : char.ToUpperInvariant(raw[0]) + raw[1..];
     }
 
     private async Task<string> GetCurrentUserIdAsync(CancellationToken ct)

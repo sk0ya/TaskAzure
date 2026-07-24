@@ -101,8 +101,9 @@ public class MainViewModel : INotifyPropertyChanged
             var items = itemsTask.Result;
             var prs   = prsTask.Result;
 
-            // 一度でも自分に割り当てられた WorkItem を履歴に記録 (失敗しても表示は継続)
-            try { _history.Record(items); } catch { }
+            // 一度でも自分に関わった WorkItem / PR を履歴に記録 (失敗しても表示は継続)
+            try { _history.RecordWorkItems(items); } catch { }
+            try { _history.RecordPullRequests(prs); } catch { }
 
             // WorkItem ViewModel を先に作成
             var workItemVms = items.Select(i => new WorkItemViewModel(i)).ToList();
