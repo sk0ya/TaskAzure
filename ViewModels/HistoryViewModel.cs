@@ -15,7 +15,9 @@ public class HistoryViewModel : INotifyPropertyChanged
     private readonly HistoryService _history;
     private readonly AzureDevOpsService _ado;
 
-    private List<HistoryItemViewModel> _all = [];
+    private List<HistoryItemViewModel> _persisted = [];   // 履歴に保存された自分の項目
+    private List<HistoryItemViewModel> _context = [];     // 親子表示のため取得した履歴外の親
+    private List<HistoryItemViewModel> _all = [];         // _persisted + _context
     private Dictionary<int, HistoryItemViewModel> _byWorkItemId = [];
     private ObservableCollection<HistoryItemViewModel> _items = [];
     private ObservableCollection<string> _typeOptions = [AllOption];
@@ -78,13 +80,14 @@ public class HistoryViewModel : INotifyPropertyChanged
         LoadLocal();
 
         // サーバーから最新の状態を取得して履歴を更新する (失敗しても履歴表示は継続)
-        if (!_ado.IsConfigured || _all.Count == 0) return;
+        if (!_ado.IsConfigured || _persisted.Count == 0) return;
         try
         {
             StatusMessage = "最新状態を取得中...";
             await RefreshWorkItemsAsync();
             await RefreshPullRequestsAsync();
-            LoadLocal();
+            LoadLocal();                 // 更新した親ID/状態で再読込
+            await FetchAncestorsAsync(); // 履歴外の親を取得して親子表示を補完
         }
         catch
         {
@@ -94,7 +97,7 @@ public class HistoryViewModel : INotifyPropertyChanged
 
     private async Task RefreshWorkItemsAsync()
     {
-        var ids = _all.Where(v => v.Kind == HistoryKind.WorkItem)
+        var ids = _persisted.Where(v => v.Kind == HistoryKind.WorkItem)
             .Select(v => v.Id).ToList();
         if (ids.Count == 0) return;
 
@@ -105,7 +108,7 @@ public class HistoryViewModel : INotifyPropertyChanged
     private async Task RefreshPullRequestsAsync()
     {
         // Active なままの PR のみ状態確認 (Completed/Abandoned は変化しない)
-        var targets = _all
+        var targets = _persisted
             .Where(v => v.Kind == HistoryKind.PullRequest && v.State == "Active"
                         && !string.IsNullOrWhiteSpace(v.Project) && !string.IsNullOrWhiteSpace(v.RepositoryName))
             .ToList();
@@ -120,21 +123,68 @@ public class HistoryViewModel : INotifyPropertyChanged
         _history.UpdatePullRequestStates(idToState);
     }
 
+    /// <summary>履歴に無い親 WorkItem を遡って取得し、コンテキスト行として表示する</summary>
+    private async Task FetchAncestorsAsync()
+    {
+        var have = new HashSet<int>(
+            _persisted.Where(v => v.Kind == HistoryKind.WorkItem).Select(v => v.Id));
+
+        // 起点: 履歴項目が参照する親 (WorkItem の親、PR のリンク先) のうち履歴に無いもの
+        var needed = new HashSet<int>();
+        foreach (var v in _persisted)
+        {
+            if (v.Kind == HistoryKind.WorkItem && v.ParentId != 0 && !have.Contains(v.ParentId))
+                needed.Add(v.ParentId);
+            else if (v.Kind == HistoryKind.PullRequest)
+                foreach (var wid in v.LinkedWorkItemIds)
+                    if (!have.Contains(wid)) needed.Add(wid);
+        }
+
+        var context = new List<HistoryItemViewModel>();
+        var fetched = new HashSet<int>();
+        var guard = 0;
+        while (needed.Count > 0 && guard++ < 20)
+        {
+            var batch = needed.Where(id => !have.Contains(id) && !fetched.Contains(id)).ToList();
+            if (batch.Count == 0) break;
+
+            var items = await _ado.GetWorkItemsByIdsAsync(batch);
+            needed = [];
+            foreach (var it in items)
+            {
+                fetched.Add(it.Id);
+                var entry = HistoryEntry.FromWorkItem(it, DateTime.MinValue);
+                context.Add(new HistoryItemViewModel(entry) { IsContext = true });
+                if (it.ParentId != 0 && !have.Contains(it.ParentId) && !fetched.Contains(it.ParentId))
+                    needed.Add(it.ParentId); // さらに上の親を辿る
+            }
+        }
+
+        _context = context;
+        Recompose();
+    }
+
     public void Remove(HistoryItemViewModel vm)
     {
+        if (vm.IsContext) return; // 履歴外の親は削除対象外
         _history.Remove(vm.Kind, vm.Id);
-        _all.Remove(vm);
-        RebuildOptions();
-        ApplyFilter();
+        _persisted.Remove(vm);
+        Recompose();
     }
 
     private void LoadLocal()
     {
-        _all = _history.Load()
+        _persisted = _history.Load()
             .OrderByDescending(e => e.LastSeen)
             .ThenByDescending(e => e.Id)
             .Select(e => new HistoryItemViewModel(e))
             .ToList();
+        Recompose();
+    }
+
+    private void Recompose()
+    {
+        _all = [.. _persisted, .. _context];
         RebuildOptions();
         ApplyFilter();
     }
@@ -241,9 +291,11 @@ public class HistoryViewModel : INotifyPropertyChanged
         foreach (var r in roots) Walk(r, 0);
 
         Items = new ObservableCollection<HistoryItemViewModel>(flat);
-        StatusMessage = matched.Count == _all.Count
-            ? $"{_all.Count} 件"
-            : $"該当 {matched.Count} / 全 {_all.Count} 件";
+        var myMatched = matched.Count(v => !v.IsContext);
+        var ctxNote = _context.Count > 0 ? $" (+親 {_context.Count})" : "";
+        StatusMessage = myMatched == _persisted.Count
+            ? $"{_persisted.Count} 件{ctxNote}"
+            : $"該当 {myMatched} / 全 {_persisted.Count} 件{ctxNote}";
     }
 
     private void OnPropertyChanged([CallerMemberName] string? name = null)

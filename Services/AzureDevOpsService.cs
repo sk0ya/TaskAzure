@@ -64,7 +64,8 @@ public class AzureDevOpsService : IDisposable
     private async Task<List<WorkItem>> GetWorkItemDetailsAsync(List<int> ids, CancellationToken ct)
     {
         var idList = string.Join(",", ids);
-        var url = $"{_orgUrl}/_apis/wit/workitems?ids={idList}&api-version=7.1";
+        // $expand=relations で親子リンク(Hierarchy)も取得する
+        var url = $"{_orgUrl}/_apis/wit/workitems?ids={idList}&$expand=relations&api-version=7.1";
 
         var response = await _client!.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
@@ -86,7 +87,13 @@ public class AzureDevOpsService : IDisposable
         for (var i = 0; i < ids.Count; i += 200)
         {
             var chunk = ids.Skip(i).Take(200).ToList();
-            var body = JsonSerializer.Serialize(new { ids = chunk, errorPolicy = "omit" });
+            // $expand=relations で親子リンク(Hierarchy)も取得する
+            var body = JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["ids"] = chunk,
+                ["$expand"] = "relations",
+                ["errorPolicy"] = "omit",
+            });
             var url = $"{_orgUrl}/_apis/wit/workitemsbatch?api-version=7.1";
             var content = new StringContent(body, Encoding.UTF8, "application/json");
 
@@ -122,9 +129,32 @@ public class AzureDevOpsService : IDisposable
                     "Microsoft.VSTS.Common.DevelopProcess",
                     "Microsoft.VSTS.Common.DevelopProsess"),
                 WebUrl = $"{_orgUrl}/{Uri.EscapeDataString(_project)}/_workitems/edit/{itemId}",
-                ParentId = GetFieldInt(fields2, "System.Parent"),
+                ParentId = ExtractParentId(item, fields2),
             });
         }
+    }
+
+    /// <summary>relations の Hierarchy-Reverse から親 WorkItem ID を取得。無ければ System.Parent フィールド</summary>
+    private static int ExtractParentId(JsonElement item, JsonElement fields)
+    {
+        if (item.TryGetProperty("relations", out var rels) && rels.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var r in rels.EnumerateArray())
+            {
+                if (r.TryGetProperty("rel", out var rel)
+                    && rel.GetString() == "System.LinkTypes.Hierarchy-Reverse"
+                    && r.TryGetProperty("url", out var urlProp))
+                {
+                    var url = urlProp.GetString() ?? "";
+                    var slash = url.LastIndexOf('/');
+                    if (slash >= 0 && slash < url.Length - 1
+                        && int.TryParse(url[(slash + 1)..], out var pid))
+                        return pid;
+                }
+            }
+        }
+
+        return GetFieldInt(fields, "System.Parent");
     }
 
     private static string GetFieldText(JsonElement fields, params string[] fieldNames)

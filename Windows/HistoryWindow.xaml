@@ -231,6 +231,7 @@
                 <DataTemplate DataType="{x:Type vm:HistoryItemViewModel}">
                     <Grid Tag="{Binding}" Background="Transparent"
                           Margin="{Binding IndentMargin}"
+                          Opacity="{Binding RowOpacity}"
                           ToolTip="{Binding TooltipText}">
                         <Grid.ContextMenu>
                             <ContextMenu>

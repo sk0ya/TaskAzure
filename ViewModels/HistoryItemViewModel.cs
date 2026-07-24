@@ -24,13 +24,17 @@ public class HistoryItemViewModel(HistoryEntry entry)
     public int Depth { get; set; }
     public System.Windows.Thickness IndentMargin => new(Depth * 16, 0, 0, 0);
 
+    /// <summary>履歴外から親子表示のために取得した親 (自分の履歴ではない)</summary>
+    public bool IsContext { get; init; }
+    public double RowOpacity => IsContext ? 0.6 : 1.0;
+
     /// <summary>種別フィルターの選択肢に使う表示名 (PR は "Pull Request")</summary>
     public string TypeName => entry.Kind == HistoryKind.PullRequest ? "Pull Request" : entry.WorkItemType;
 
     public DateTime FirstSeen => entry.FirstSeen;
     public DateTime LastSeen => entry.LastSeen;
     public string FirstSeenDisplay => entry.FirstSeen.ToString("yyyy/MM/dd");
-    public string LastSeenDisplay => entry.LastSeen.ToString("yyyy/MM/dd");
+    public string LastSeenDisplay => IsContext ? "" : entry.LastSeen.ToString("yyyy/MM/dd");
 
     public string IdDisplay => entry.Kind == HistoryKind.PullRequest ? $"PR#{entry.Id}" : $"#{entry.Id}";
 
@@ -83,8 +87,9 @@ public class HistoryItemViewModel(HistoryEntry entry)
         ? $"<a href=\"{WebUrl}\">PR#{Id}</a>: {Title}"
         : $"<a href=\"{WebUrl}\">{TypeShort} {Id}</a>: {Title}";
 
-    public string TooltipText =>
-        $"{IdDisplay} {Title}\n状態: {State}\n初回確認: {FirstSeenDisplay} / 最終確認: {LastSeenDisplay}";
+    public string TooltipText => IsContext
+        ? $"{IdDisplay} {Title}\n状態: {State}\n(親: 履歴外の項目)"
+        : $"{IdDisplay} {Title}\n状態: {State}\n初回確認: {FirstSeenDisplay} / 最終確認: {LastSeenDisplay}";
 
     // PR status 再取得用
     public string Project => entry.Project;
